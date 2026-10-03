@@ -1,0 +1,49 @@
+# ── Python ─────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+# ── 가상환경 ───────────────────────────
+.venv/
+venv/
+env/
+
+# ── 비밀정보 (절대 커밋 금지) ───────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials*.json
+
+# ── 데이터·DB·산출물 (용량·유출 방지) ───
+data/*
+!data/.gitkeep
+*.pgc
+*.dump
+*.sqlite3
+*.db
+logs/
+*.log
+
+# ── 개인 작업공간 ──────────────────────
+_local/
+scratch/
+.claude/settings.local.json
+
+# ── IDE / OS ───────────────────────────
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
