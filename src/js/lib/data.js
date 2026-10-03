@@ -3,12 +3,16 @@
 
 let cache = null;
 
-/** data/의 JSON 5개를 한 번만 읽어 둔다. @returns {Promise<{stations, candidates, places, copy, demo}>} */
+/** data/의 JSON을 한 번만 읽어 둔다. @returns {Promise<{stations, transitGraph, candidates, places, copy, demo}>} */
 export async function loadData() {
   if (cache) return cache;
-  const names = ['stations', 'candidates', 'places', 'copy', 'demo'];
-  const files = await Promise.all(names.map((n) => fetch(`data/${n}.json`).then((r) => r.json())));
-  cache = Object.fromEntries(names.map((n, i) => [n, files[i]]));
+  const files = {
+    stations: 'stations', transitGraph: 'transit-graph', candidates: 'candidates',
+    places: 'places', copy: 'copy', demo: 'demo',
+  };
+  const keys = Object.keys(files);
+  const values = await Promise.all(keys.map((k) => fetch(`data/${files[k]}.json`).then((r) => r.json())));
+  cache = Object.fromEntries(keys.map((k, i) => [k, values[i]]));
   return cache;
 }
 

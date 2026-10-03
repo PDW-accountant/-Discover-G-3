@@ -162,6 +162,8 @@ git commit -m "출발역 검색 목록에 호선 표시 추가"
 git push -u origin feature/jiwon-input-form    # 처음 한 번
 git push                              # 그 이후
 ```
+- push하고 1~2분 뒤 내 브랜치 전용 미리보기 주소에서 실제 화면을 볼 수 있습니다. PR 전에도 생기고, 다시 push하면 같은 주소가 최신 내용으로 바뀝니다.
+  주소 형식: `https://eodiga3-git-<브랜치명>-pw-c-discover-g-3.vercel.app` (브랜치명의 `/`는 `-`로 바뀜)
 
 ### 9-5. Pull Request(PR) 만들기
 1. GitHub 저장소 페이지에 들어가면 노란 배너 **Compare & pull request** 가 보입니다. 클릭

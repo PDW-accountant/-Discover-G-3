@@ -12,7 +12,7 @@ export function centerOf(stations) {
 }
 
 /**
- * 직선거리 기반 예상 이동시간. 이동시간 조회가 실패하거나 쓸 수 없을 때의 대체 값 (SFR-020).
+ * 직선거리 기반 예상 이동시간. 지하철 그래프에 없는 역이거나 도달할 수 없을 때의 대체 값 (SFR-020).
  * 분속 약 70m 환산, 환승 0. 같은 역이면 0분.
  * @returns {{minutes:number, transfers:number, steps:[], is_estimated:true}}
  */
