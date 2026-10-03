@@ -26,8 +26,6 @@ env/
 credentials*.json
 
 # ── 데이터·DB·산출물 (용량·유출 방지) ───
-data/*
-!data/.gitkeep
 *.pgc
 *.dump
 *.sqlite3
@@ -39,6 +37,10 @@ logs/
 _local/
 scratch/
 .claude/settings.local.json
+
+# ── Node·Vercel ────────────────────────
+node_modules/
+.vercel/
 
 # ── IDE / OS ───────────────────────────
 .vscode/

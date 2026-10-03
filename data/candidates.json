@@ -1,0 +1,5 @@
+{
+  "회식": ["S-SAMPLE-1", "S-SAMPLE-2"],
+  "회의": ["S-SAMPLE-2", "S-SAMPLE-3"],
+  "오락": ["S-SAMPLE-1", "S-SAMPLE-3"]
+}

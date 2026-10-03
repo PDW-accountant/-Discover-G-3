@@ -118,13 +118,31 @@
 
 ## 4. 폴더와 담당
 
+```
+index.html              첫 화면 (Vercel 규칙상 루트)
+src/css/style.css       스타일
+src/js/main.js          시작점·주소에 따른 화면 전환
+src/js/config.js        설정값 (인원 수, 갱신 간격, 카카오 JS 키 등)
+src/js/screens/         화면별 파일. 모두 render(container, params)를 내보낸다
+src/js/lib/             계산·저장·공유 등 화면에 쓰는 기능
+api/                    Vercel 서버 함수 (Vercel 규칙상 루트). api/_lib/은 함수가 아닌 공용 코드
+data/                   앱이 읽는 JSON (scripts/convert.js로만 만든다)
+scripts/                시트 → JSON 변환 등 도구
+tests/                  자동 검사 (npm test, 설치 없이 Node 내장 기능 사용)
+docs/                   문서
+```
+
 | 경로 | 내용 | 담당 |
 |---|---|---|
-| `index.html`, `css/`, `js/ui.js` | 화면 5개, 입력 폼, 결과·경로 화면, 지도, 공유 버튼, 문구표 반영, 모바일 대응 | 개발 A |
-| `api/` | Vercel 서버 함수: 대중교통 조회, 캐싱·호출 상한, 모임 방(만들기·입력·현황·확정), 키 관리 | 개발 B |
-| `js/recommend.js`, `data/` | 후보 추리기, 공평함 순위, 권장 출발 시각, 시트 → JSON 변환, 시연 결과 저장 | 개발 C |
+| `index.html`, `src/css/`, `src/js/main.js`, `src/js/screens/`, `src/js/lib/` 중 `stations.js`·`share.js`·`storage.js`·`map.js` | 화면, 입력 폼, 결과·경로 화면, 지도, 공유 버튼, 브라우저 저장, 문구표 반영, 모바일 대응 | 개발 A |
+| `api/`, `src/js/lib/api-client.js` | Vercel 서버 함수: 모임 방(만들기·입력·현황·확정), 근처 장소, 키 관리. 화면은 `api-client.js`로만 서버를 부른다 | 개발 B |
+| `src/js/lib/` 중 `geo.js`·`recommend.js`·`departure.js`·`places.js`·`share-link.js`·`demo.js`·`data.js`, `data/`, `scripts/` | 후보 추리기, 공평함 순위, 권장 출발 시각, 공유 링크 인코딩, 시트 → JSON 변환, 시연 결과 저장 | 개발 C |
+| `tests/` | 자기가 만든 `lib/` 함수의 검사 | 각 담당 |
 | `docs/` | 작업 규칙, 맥락, 기능명세서, 프롬프트 기록 | 전원 |
 
+- 기능은 GitHub 이슈(FUNC 번호별)로 나눠 맡는다. 작업을 시작할 때 이슈 번호를 물어보고, 이슈 본문의 처리 규칙·예외·완료 조건을 기준으로 구현한다. 커밋 메시지 끝에 `(#이슈번호)`를 붙이고, 완료 조건을 모두 확인했으면 사용자에게 이슈를 닫을지 묻는다.
+- 함수 이름·입력·출력은 뼈대 파일의 주석에 정해 두었다. 바꿔야 하면 그 함수를 쓰는 다른 담당에게 먼저 알린다.
+- `lib/`의 계산 함수를 구현하면 `tests/`의 해당 `test.todo`를 실제 테스트로 바꾸고 `npm test`가 통과하는지 확인한 뒤 push한다.
 - 사용자가 담당 폴더 밖 파일을 고치려 하면 "이 파일은 ○○ 담당입니다. 단톡방에 먼저 알렸나요?"라고 한 번 확인한다. 막지는 않는다.
 - 개발 A·B·C가 누구인지는 10/4 내부 리뷰에서 정한다. 정해지면 이 표에 이름을 적는다.
 
