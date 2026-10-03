@@ -1,4 +1,4 @@
-/* 모이자 기본 스타일 (개발 A). 콘텐츠팀 UI 레퍼런스가 나오면 정리합니다. 모바일 가로 375px 기준. */
+/* 어디gㅏ3 기본 스타일 (개발 A). 콘텐츠팀 UI 레퍼런스가 나오면 정리합니다. 모바일 가로 375px 기준. */
 *{box-sizing:border-box}
 body{margin:0;font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;line-height:1.6;color:#1f2328;background:#fff}
 .wrap{max-width:480px;margin:0 auto;padding:32px 16px}
