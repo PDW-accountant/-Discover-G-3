@@ -19,7 +19,7 @@ npm test        # 자동 검사 (설치할 것 없음, Node만 있으면 됨)
 ## 협업 규칙
 
 - `main`에 직접 push하지 않습니다. `feature/[이름]-[기능]` 브랜치에서 작업하고 PR로 합칩니다. 병합은 대원이 합니다.
-- 브랜치를 push하면 1~2분 뒤 그 브랜치 전용 미리보기 주소가 생깁니다: `https://eodiga3-git-<브랜치명>-pw-c-discover-g-3.vercel.app`
+- 브랜치를 push하면 1~2분 뒤 그 브랜치 전용 미리보기 주소가 생깁니다: `https://eodiga3-git-<브랜치명>-pw-c-discover-g-3.vercel.app` (브랜치 이름이 길면 주소가 줄어드니 PR의 Vercel 댓글에서 확인)
 - 커밋 메시지: 한국어 한 줄 + `(#이슈번호)`. 예: `출발역 검색 목록에 호선 표시 추가 (#3)`
 - `.env`, `.env.local`, 토큰은 커밋하지 않습니다 (`.gitignore`로 막혀 있음).
 
