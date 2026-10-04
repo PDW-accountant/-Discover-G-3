@@ -37,9 +37,22 @@ export async function createRoom(request) {
   }
 }
 
-/** FUNC-014·023 방 정보 읽기. @returns {Promise<Room|null>} 없거나 만료면 null */
-export async function getRoom(roomId) {
-  throw new Error('아직 구현되지 않았습니다');
+/**
+ * FUNC-014·023 방 정보 읽기. 총무 화면은 hostToken을 함께 보내 총무인지(is_host)를 확인한다(주소가 아닌 헤더로 보낸다).
+ * @param {string} roomId
+ * @param {string} [hostToken]
+ * @returns {Promise<{room_id, purpose, arrival_time, status, is_host, participants: RoomParticipant[], confirmation?}|null>}
+ *   방이 없거나 만료되었으면 null. 서버가 없거나 응답이 이상하면 예외 — 부르는 화면이 '불러오지 못했어요'로 안내한다.
+ */
+export async function getRoom(roomId, hostToken) {
+  const res = await fetch(`/api/room?id=${encodeURIComponent(roomId)}`, {
+    headers: hostToken ? { 'x-host-token': hostToken } : {},
+    cache: 'no-store',
+  });
+  const data = await res.json().catch(() => null);
+  if (res.status === 404 && data?.error === 'not_found') return null;
+  if (!res.ok || !data || !Array.isArray(data.participants)) throw new Error('방 정보를 불러오지 못했습니다');
+  return data;
 }
 
 /**
@@ -71,9 +84,23 @@ export async function saveParticipant(roomId, participant, hostToken) {
   }
 }
 
-/** FUNC-023 참여자 삭제 (총무만). */
+/**
+ * FUNC-023 참여자 삭제 (총무만).
+ * @returns {Promise<{ok:true}|{error:string}>} 실패하면 { error }: 'not_found' | 'forbidden' | 'confirmed' | 'invalid' | 'unavailable'
+ */
 export async function deleteParticipant(roomId, participantId, hostToken) {
-  throw new Error('아직 구현되지 않았습니다');
+  try {
+    const res = await fetch('/api/room-participant', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ room_id: roomId, participant_id: participantId, host_token: hostToken }),
+    });
+    const data = await res.json().catch(() => null);
+    if (res.ok && data?.ok === true) return { ok: true };
+    return { error: data?.error ?? 'unavailable' };
+  } catch {
+    return { error: 'unavailable' };
+  }
 }
 
 /**

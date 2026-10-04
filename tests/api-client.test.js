@@ -1,6 +1,6 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { saveParticipant, createRoom, getStatus, confirmRoom } from '../src/js/lib/api-client.js';
+import { saveParticipant, createRoom, getStatus, confirmRoom, getRoom, deleteParticipant } from '../src/js/lib/api-client.js';
 
 const realFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = realFetch; });
@@ -140,5 +140,90 @@ test('NFR-011: 서버 상태 확인 — 서버가 없거나 응답이 이상하�
   for (const respond of cases) {
     globalThis.fetch = async () => respond();
     assert.deepEqual(await getStatus(), { rooms: false });
+  }
+});
+
+// ---- FUNC-023: getRoom, deleteParticipant ----
+const roomData = {
+  room_id: 'room1234567', purpose: '회식', arrival_time: '2026-10-10T10:00:00.000Z', status: '입력중', is_host: true,
+  participants: [{ participant_id: 'p_abcdefgh', nickname: '감이', origin_station_id: 'S1', updated_at: 'T' }],
+};
+
+/** fetch를 가짜로 바꾸되 body가 없는 GET도 기록한다. */
+function fakeGet(respond) {
+  const calls = [];
+  globalThis.fetch = async (url, options) => { calls.push({ url, options }); return respond(); };
+  return calls;
+}
+
+test('FUNC-023: getRoom은 방 id를 주소에 넣어 GET하고 총무 토큰은 헤더로만 보낸다', async () => {
+  const calls = fakeGet(() => json(200, roomData));
+  await getRoom('room1234567', 'host-token-12345');
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, '/api/room?id=room1234567');
+  assert.ok(!calls[0].url.includes('host-token'), '토큰이 주소에 들어가면 로그에 남는다');
+  assert.equal(calls[0].options.headers['x-host-token'], 'host-token-12345');
+  assert.equal(calls[0].options.cache, 'no-store');
+});
+
+test('FUNC-023: 총무 토큰이 없으면 헤더를 보내지 않는다', async () => {
+  const calls = fakeGet(() => json(200, { ...roomData, is_host: false }));
+  await getRoom('room1234567');
+  assert.deepEqual(calls[0].options.headers, {});
+});
+
+test('FUNC-023: getRoom 성공하면 방 정보와 참여자 목록을 그대로 돌려준다', async () => {
+  fakeGet(() => json(200, roomData));
+  assert.deepEqual(await getRoom('room1234567', 'host-token-12345'), roomData);
+});
+
+test('FUNC-014: 방이 없거나 만료되면 null', async () => {
+  fakeGet(() => json(404, { error: 'not_found' }));
+  assert.equal(await getRoom('room1234567'), null);
+});
+
+test('NFR-011: 서버가 없거나 응답이 이상하면 null이 아니라 예외 (화면이 "불러오지 못했어요"로 안내)', async () => {
+  const cases = [
+    () => { throw new TypeError('Failed to fetch'); },
+    () => new Response('<html>Not Found</html>', { status: 404 }),   // Live Server처럼 서버 함수가 없을 때
+    () => new Response('not json', { status: 500 }),
+    () => json(503, { error: 'unavailable' }),
+    () => json(200, {}),                                              // participants가 없음
+    () => json(200, { ...roomData, participants: 'x' }),
+  ];
+  for (const respond of cases) {
+    fakeGet(respond);
+    await assert.rejects(() => getRoom('room1234567'), /불러오지 못했습니다|Failed to fetch/);
+  }
+});
+
+test('FUNC-023: 참여자 삭제는 DELETE로 방 id·참여자 id·총무 토큰을 보낸다', async () => {
+  const calls = fakeFetch(() => json(200, { ok: true }));
+  assert.deepEqual(await deleteParticipant('room1234567', 'p_abcdefgh', 'host-token-12345'), { ok: true });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, '/api/room-participant');
+  assert.equal(calls[0].options.method, 'DELETE');
+  assert.equal(calls[0].options.headers['Content-Type'], 'application/json');
+  assert.deepEqual(calls[0].body, { room_id: 'room1234567', participant_id: 'p_abcdefgh', host_token: 'host-token-12345' });
+});
+
+test('FUNC-023: 삭제가 거절되면 예외 없이 { error }를 돌려준다', async () => {
+  for (const [status, error] of [[403, 'forbidden'], [404, 'not_found'], [409, 'confirmed'], [400, 'invalid'], [503, 'unavailable']]) {
+    fakeFetch(() => json(status, { error }));
+    assert.deepEqual(await deleteParticipant('room1234567', 'p_abcdefgh', 'host-token-12345'), { error });
+  }
+});
+
+test('NFR-011: 삭제 요청도 서버가 없거나 응답이 이상하면 unavailable', async () => {
+  const cases = [
+    () => { throw new TypeError('Failed to fetch'); },
+    () => new Response('<html>Not Found</html>', { status: 404 }),
+    () => new Response('not json', { status: 500 }),
+    () => json(200, {}),                                              // ok:true가 없음
+    () => json(501, { message: '아직 구현되지 않았습니다' }),
+  ];
+  for (const respond of cases) {
+    fakeFetch(respond);
+    assert.deepEqual(await deleteParticipant('room1234567', 'p_abcdefgh', 'host-token-12345'), { error: 'unavailable' });
   }
 });
