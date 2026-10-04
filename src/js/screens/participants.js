@@ -15,7 +15,7 @@ import { lineBadge, rareServiceNotices, searchStations } from '../lib/stations.j
 import { createShell, el, go } from '../lib/shell.js';
 import { characterNode } from '../lib/characters.js';
 import { createRoom, deleteParticipant, getRoom, getStatus, saveParticipant } from '../lib/api-client.js';
-import { getHostToken, setHostToken } from '../lib/storage.js';
+import { clearDraft, getHostToken, saveDraftSoon, setHostToken } from '../lib/storage.js';
 import { roomUrl } from '../lib/share-link.js';
 import { copyLink } from '../lib/share.js';
 import { MAX_PARTICIPANTS, MIN_PARTICIPANTS, NICKNAME_MAX_LENGTH, POLL_INTERVAL_MS, POLL_STOP_AFTER_MS } from '../config.js';
@@ -230,6 +230,7 @@ export async function render(container, params = {}) {
       return draw();
     }
     setHostToken(created.room_id, created.host_token);
+    clearDraft(); // 방이 생기면 입력은 서버에 있으므로 임시저장(#17)을 지운다
     roomId = created.room_id;
     hostToken = created.host_token;
     joinUrl = created.join_url;
@@ -386,6 +387,14 @@ export async function render(container, params = {}) {
    */
   function drawStatus() {
     const all = allRows();
+    // 방 없이 입력하는 동안은 줄이 바뀔 때마다(닉네임·역·인원) 0.5초 뒤 임시저장(#17). 방 모드는 서버에 있으므로 저장하지 않는다
+    if (!roomId && params.request) {
+      saveDraftSoon({
+        request: params.request,
+        ...(params.form ? { form: params.form } : {}),
+        participants: rows.map(({ participant_id, nickname, origin_station_id }) => ({ participant_id, nickname, origin_station_id })),
+      });
+    }
     const check = checkParticipants(all);
     body.querySelectorAll('.person').forEach((node, i) => {
       node.classList.toggle('missing', touched && check.missing.includes(i));

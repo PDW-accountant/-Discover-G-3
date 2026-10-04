@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildMeetingRequest, defaultArrival, formatDateInput } from '../src/js/screens/meeting-form.js';
+import { buildMeetingRequest, defaultArrival, formatDateInput, formatSavedAt } from '../src/js/screens/meeting-form.js';
 
 const now = new Date(2026, 9, 4, 12, 0); // 2026-10-04 12:00 (브라우저 시간대 기준)
 const ok = { purpose: '회식', date: '2026-10-04', hour: '19', min: '00' };
@@ -57,4 +57,10 @@ test('FUNC-001: 처음 값은 오늘 19:00, 이미 지났으면 내일 19:00 (�
   for (const base of [new Date(2026, 9, 4, 3, 0), new Date(2026, 9, 4, 23, 59)]) {
     assert.ok(buildMeetingRequest({ purpose: '회식', ...defaultArrival(base) }, base).request, base.toString());
   }
+});
+
+test("FUNC-019: '이어서 입력할까요?'의 저장 시각은 오늘이면 시:분, 아니면 날짜까지", () => {
+  assert.equal(formatSavedAt(new Date(2026, 9, 4, 9, 5).toISOString(), now), '09:05');
+  assert.equal(formatSavedAt(new Date(2026, 9, 3, 19, 20).toISOString(), now), '10월 3일 19:20');
+  assert.equal(formatSavedAt('잘못된 값', now), '');
 });
