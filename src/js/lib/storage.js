@@ -2,6 +2,8 @@
 // 모든 접근은 try/catch로 감싼다. 시크릿 모드·차단 시에도 저장 없이 정상 동작해야 한다.
 // 키: eodiga3:draft, eodiga3:meetings, eodiga3:pid, eodiga3:host:{room}
 
+import { MAX_SAVED_MEETINGS } from '../config.js';
+
 function read(key) {
   try { return JSON.parse(localStorage.getItem(key)); } catch { return null; }
 }
@@ -72,13 +74,47 @@ export function hasDraftContent(draft) {
   return Boolean(draft.form?.purpose) || (draft.participants ?? []).some((p) => String(p.nickname ?? '').trim() || p.origin_station_id);
 }
 
-/** FUNC-020 (여유 되면) 내 모임 목록. 최근 순, 최대 20건. */
-export function addMeeting(meeting) {
-  throw new Error('아직 구현되지 않았습니다');
+// ---------- FUNC-020 내 모임 목록 (#18) ----------
+// 이 휴대폰에서 만든 모임을 최근 순으로 최대 20건. 방을 만들 때 '입력중'으로 넣고, 확정하면 같은 방 항목을 '확정'으로 바꾼다.
+// MyMeeting: { key, status: '입력중'|'확정', room_id?, purpose, arrival_time, station_id?, place_id?, url, saved_at }
+//   key: 방이 있으면 'room:{id}'(같은 방은 한 줄), 없으면 공유 링크(#d=…)
+const roomIdOfUrl = (url) => {
+  try { return new URL(url, 'https://x.invalid').searchParams.get('room'); } catch { return null; }
+};
+
+function upsertMeeting(entry, now) {
+  const list = listMeetings().filter((m) => m.key !== entry.key);
+  list.unshift({ ...entry, saved_at: now.toISOString() });
+  return write('eodiga3:meetings', list.slice(0, MAX_SAVED_MEETINGS)); // 20건을 넘으면 오래된 것부터 지운다
 }
+
+/** 방을 만들었을 때: '입력 받는 중' 항목. @param {{room_id, purpose, arrival_time, url}} room */
+export function addRoomMeeting(room, now = new Date()) {
+  return upsertMeeting({
+    key: `room:${room.room_id}`, status: '입력중', room_id: room.room_id,
+    purpose: room.purpose, arrival_time: room.arrival_time, url: room.url,
+  }, now);
+}
+
+/** 확정했을 때(confirm.js): 같은 방 항목이 있으면 '확정'으로 바꾸고, 방 없이 확정했으면 새 항목. @param {MeetingConfirmation} confirmation share_url 포함 */
+export function addMeeting(confirmation, now = new Date()) {
+  const roomId = roomIdOfUrl(confirmation.share_url);
+  return upsertMeeting({
+    key: roomId ? `room:${roomId}` : confirmation.share_url, status: '확정', ...(roomId ? { room_id: roomId } : {}),
+    purpose: confirmation.p, arrival_time: confirmation.a, station_id: confirmation.s, place_id: confirmation.pl,
+    url: confirmation.share_url,
+  }, now);
+}
+
+/** 저장된 목록(최근 순). 저장소를 못 쓰거나 형식이 이상하면 빈 목록. */
 export function listMeetings() {
-  throw new Error('아직 구현되지 않았습니다');
+  const list = read('eodiga3:meetings');
+  return Array.isArray(list) ? list.filter((m) => m && typeof m.key === 'string' && typeof m.url === 'string') : [];
 }
-export function removeMeeting(shareUrl) {
-  throw new Error('아직 구현되지 않았습니다');
+
+/** 목록에서 한 항목을 지운다. 방 항목이면 이 기기의 총무 토큰도 지운다(서버의 방은 화면이 deleteRoom으로 지운다). */
+export function removeMeeting(key) {
+  const target = listMeetings().find((m) => m.key === key);
+  if (target?.room_id) remove(`eodiga3:host:${target.room_id}`);
+  return write('eodiga3:meetings', listMeetings().filter((m) => m.key !== key));
 }
