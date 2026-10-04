@@ -24,9 +24,9 @@ beforeEach(() => {
 });
 afterEach(() => { process.env = { ...savedEnv }; mock.restoreAll(); });
 
-test('POST·GET 외 요청은 501', async () => {
-  assert.equal((await call('DELETE', valid)).status, 501);
+test('POST·GET·DELETE 외 요청은 501', async () => {
   assert.equal((await call('PUT', valid)).status, 501);
+  assert.equal((await call('PATCH', valid)).status, 501);
 });
 
 test('FUNC-021: 목적이나 도착 시간이 올바르지 않으면 400 invalid', async () => {
@@ -266,4 +266,50 @@ test('FUNC-023: 깨진 참여자 항목은 건너뛰고 나머지는 보여준�
   ])]);
   assert.equal(out.status, 200);
   assert.deepEqual(out.body.participants.map((p) => p.participant_id), ['p_good000001']);
+});
+
+// ---- FUNC-020(#18): DELETE /api/room?id= (내 약속 목록에서 입력 받는 중인 방 지우기) ----
+const del = (results, headers = { 'x-host-token': HOST_TOKEN }) => runWithRedisResults(results, { method: 'DELETE', query: { id: ROOM_ID }, headers });
+
+test('#18: 방 id나 총무 토큰(헤더)이 없거나 형식이 틀리면 400 invalid', async () => {
+  const cases = [
+    { query: { id: ROOM_ID }, headers: {} },
+    { query: { id: ROOM_ID }, headers: { 'x-host-token': 'short' } },
+    { query: { id: 'bad/id' }, headers: { 'x-host-token': HOST_TOKEN } },
+    { query: {}, headers: { 'x-host-token': HOST_TOKEN } },
+  ];
+  for (const { query, headers } of cases) {
+    const out = {};
+    await handler({ method: 'DELETE', query, headers }, { status(c) { out.status = c; return this; }, json(b) { out.body = b; return this; } });
+    assert.deepEqual(out, { status: 400, body: { error: 'invalid' } }, JSON.stringify({ query, headers }));
+  }
+});
+
+test('#18·NFR-011: 저장소 환경변수가 없으면 방 지우기도 503 unavailable', async () => {
+  const out = {};
+  await handler({ method: 'DELETE', query: { id: ROOM_ID }, headers: { 'x-host-token': HOST_TOKEN } }, {
+    status(c) { out.status = c; return this; }, json(b) { out.body = b; return this; },
+  });
+  assert.deepEqual(out, { status: 503, body: { error: 'unavailable' } });
+});
+
+test('#18: 총무 토큰 해시로 확인하고 지우면 200 ok — 확인·삭제는 한 번에(EVAL)', () => {
+  const out = del(['ok']);
+  assert.deepEqual({ status: out.status, body: out.body }, { status: 200, body: { ok: true } });
+  assert.equal(out.commands.length, 1);
+  const [name, script, keyCount, key, tokenHash] = out.commands[0];
+  assert.equal(name, 'EVAL');
+  assert.match(script, /host_token_hash[\s\S]*'확정'[\s\S]*DEL/);
+  assert.equal(keyCount, '1');
+  assert.equal(key, `room:${ROOM_ID}`);
+  assert.equal(tokenHash, hostHash); // 토큰 자체가 아니라 해시를 보낸다
+});
+
+test('#18: 없는 방 404, 총무가 아니면 403, 확정된 방은 지우지 않고 409, 저장소 실패는 503', () => {
+  const pick = (out) => ({ status: out.status, body: out.body });
+  assert.deepEqual(pick(del(['not_found'])), { status: 404, body: { error: 'not_found' } });
+  assert.deepEqual(pick(del(['forbidden'])), { status: 403, body: { error: 'forbidden' } });
+  assert.deepEqual(pick(del(['confirmed'])), { status: 409, body: { error: 'confirmed' } });
+  assert.deepEqual(pick(del(['THROW'])), { status: 503, body: { error: 'unavailable' } });
+  assert.deepEqual(pick(del([null])), { status: 503, body: { error: 'unavailable' } });
 });
