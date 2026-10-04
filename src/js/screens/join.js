@@ -9,7 +9,7 @@ import { loadData, t } from '../lib/data.js';
 import { getRoom, saveParticipant } from '../lib/api-client.js';
 import { getParticipantId } from '../lib/storage.js';
 import { lineBadge, rareServiceNotices, searchStations } from '../lib/stations.js';
-import { createShell, el } from '../lib/shell.js';
+import { createShell, el, replace } from '../lib/shell.js';
 import { characterNode } from '../lib/characters.js';
 import { MAX_PARTICIPANTS, NICKNAME_MAX_LENGTH } from '../config.js';
 import { render as renderRoute } from './route.js';
@@ -28,10 +28,10 @@ function showMessage(container, text) {
   createShell(container).screen.replaceChildren(el('p', { textContent: text }));
 }
 
-/** 다른 화면을 연다. 그 화면이 아직 없거나 실패하면 안내 문구만 보여준다. */
+/** 이 자리를 다른 화면으로 바꾼다(확정된 방 → 경로, 없는 방 → 링크 오류). 뒤로가기는 그 전 화면으로(#44). 실패하면 안내 문구만. */
 function openScreen(renderFn, container, params, fallbackText) {
   try {
-    Promise.resolve(renderFn(container, params)).catch(() => showMessage(container, fallbackText));
+    Promise.resolve(replace(renderFn, container, params)).catch(() => showMessage(container, fallbackText));
   } catch {
     showMessage(container, fallbackText);
   }

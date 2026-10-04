@@ -134,8 +134,8 @@ function formatArrival(value) {
   });
 }
 
-/** '만남 장소 | 이름 | 보기' 줄. 화면 위쪽(도착 역 아래)과 펼친 칸 안에 쓴다. */
-function placeNode(place, className = 'route-place') {
+/** '만남 장소 | 이름 | 보기' 줄. 화면 위쪽(도착 역 아래)에만 둔다(펼친 칸 안에는 되풀이하지 않음, 10/4 대원). */
+function placeNode(place, className = 'route-place top') {
   return el('div', { className }, [
     el('span', { className: 'k', textContent: t('route.place') }),
     el('span', { className: 'v', textContent: place.name }),
@@ -143,13 +143,9 @@ function placeNode(place, className = 'route-place') {
   ]);
 }
 
-/** 펼친 칸의 내용: 지도 → 요약 → 구간 → 권장 출발 시각 → 만남 장소 */
+/** 펼친 칸의 내용: 지도 → 요약 → 구간 → 권장 출발 시각 (만남 장소는 화면 위쪽에만) */
 function routeBody(info) {
-  const placeRow = info.place ? placeNode(info.place) : null;
-
-  if (info.same_station) {
-    return [el('div', { className: 'route' }, [t('route.same')]), ...(placeRow ? [placeRow] : [])];
-  }
+  if (info.same_station) return [el('div', { className: 'route' }, [t('route.same')])];
 
   const mapBox = el('div', { className: 'map-box' });
   let drawn = false;
@@ -179,7 +175,7 @@ function routeBody(info) {
   }
 
   const notices = rareServiceNotices([info.from, info.to]).map((text) => el('p', { className: 'notice', textContent: text }));
-  return [mapBox, summary, ...notices, ...[steps, departRow, placeRow].filter(Boolean)];
+  return [mapBox, summary, ...notices, ...[steps, departRow].filter(Boolean)];
 }
 
 function showMessage(container, text) {
@@ -211,7 +207,7 @@ export async function render(container, params = {}) {
     el('h2', { className: 'q big', textContent: t('route.title') }),
     el('p', { className: 'lead', textContent: t('route.lead', { station: toStation.name, time: formatArrival(confirmation.a) }) }),
     // 참여자 칸을 펼치지 않아도 만남 장소가 보이게 도착 역 바로 아래에 둔다
-    ...(place ? [placeNode(place, 'route-place top')] : []),
+    ...(place ? [placeNode(place)] : []),
     el('p', { className: 'hint', textContent: t('route.timeBasis') }),
     ...(notice ? [el('p', { className: 'error', role: 'alert', textContent: notice })] : []),
     list,
