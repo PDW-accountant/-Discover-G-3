@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { LINE_BADGES, lineBadge, normalizeKeyword, rareServiceNotices, searchStations } from '../src/js/lib/stations.js';
+import { LINE_BADGES, initialOf, lineBadge, normalizeKeyword, rareServiceNotices, searchStations } from '../src/js/lib/stations.js';
 
 // 실행: npm test
 
@@ -22,9 +22,30 @@ test('FUNC-002: 검색어가 없으면 가나다 순 전체 목록', () => {
   assert.deepEqual(names(searchStations(stations, '   ')), names(searchStations(stations)));
 });
 
-test("FUNC-002: '강남' 검색 시 이름에 '강남'이 들어간 역만 나온다", () => {
+test("FUNC-002: '강남' 검색 시 이름이 '강남'으로 시작하는 역만 나온다 (가운데·끝 글자는 맞추지 않음, 10/4)", () => {
   assert.deepEqual(names(searchStations(stations, '강남')), ['강남', '강남구청']);
-  assert.deepEqual(names(searchStations(stations, '입구')), ['을지로입구', '홍대입구']);
+  assert.deepEqual(names(searchStations(stations, '입구')), []); // 을지로입구·홍대입구는 '입구'로 시작하지 않는다
+  assert.deepEqual(names(searchStations(stations, '구청')), []);
+});
+
+test("FUNC-002: 자음만 치면 그 자음으로 시작하는 역, 완성 글자를 치면 그 글자로 시작하는 역만 (10/4)", () => {
+  const more = [...stations, station('S7', '가산디지털단지', ['1', '7']), station('S8', '광화문', ['5'])];
+  assert.deepEqual(names(searchStations(more, 'ㄱ')), ['가산디지털단지', '강남', '강남구청', '광화문']);
+  assert.deepEqual(names(searchStations(more, '가')), ['가산디지털단지']); // '강남'의 첫 글자는 '가'가 아니다
+  assert.deepEqual(names(searchStations(more, '강')), ['강남', '강남구청']);
+  assert.deepEqual(names(searchStations(more, 'ㄱㄴ')), ['강남', '강남구청']);   // 글자마다 초성
+  assert.deepEqual(names(searchStations(more, '강ㄴ')), ['강남', '강남구청']);  // 완성 글자 + 초성 섞기
+  assert.deepEqual(names(searchStations(more, 'ㅎㄷ')), ['홍대입구']);
+  assert.deepEqual(names(searchStations(more, 'ㅈㄹ3')), ['종로3가']);
+  assert.deepEqual(names(searchStations(more, 'ㄴ')), []);
+});
+
+test('FUNC-002: 완성 글자의 초성', () => {
+  assert.equal(initialOf('강'), 'ㄱ');
+  assert.equal(initialOf('홍'), 'ㅎ');
+  assert.equal(initialOf('빠'), 'ㅃ');
+  assert.equal(initialOf('ㄱ'), null);
+  assert.equal(initialOf('A'), null);
 });
 
 test("FUNC-002: 앞뒤 공백·끝의 '역'은 무시한다", () => {
