@@ -149,6 +149,15 @@ test('FUNC-016: 하루 2회만 다니는 운천·임진강에는 trains_per_day�
   assert.deepEqual(stations.filter((s) => s.trains_per_day).map((s) => [s.name, s.trains_per_day]), [['운천', 2], ['임진강', 2]]);
 });
 
+test('FUNC-016: 시연 시나리오 시트를 demo.json으로 바꾼다 (참여자 역 이름 → 역 id, 기대 결과)', () => {
+  const [sc] = result.demo.scenarios;
+  assert.equal(sc.purpose, '회식');
+  assert.deepEqual(sc.participants.map((p) => [p.nickname, stations.find((s) => s.id === p.origin_station_id).name]), [
+    ['감자', '연신내'], ['고구마', '청량리'], ['옥수수', '마포'], ['단호박', '압구정'],
+  ]);
+  assert.deepEqual(sc.expected, { station_id: byName('종로3가').id, score: 14.67, saved_minutes: 4 });
+});
+
 test('FUNC-016: 변환을 두 번 실행해도 결과가 같다', () => {
   const again = convert();
   assert.equal(formatJson(again.graph), formatJson(graph));
