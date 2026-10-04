@@ -207,6 +207,28 @@ input.p-name.invalid{border-color:#cf222e;}
 
 /* 약속 확정 (FUNC-012) — 프로토타입 .done-wrap·.done-msg·.done-sub·.ticket* 그대로. .crew는 위 '입력 완료'를 함께 씀 */
 .done-wrap{flex:1;display:flex;flex-direction:column;justify-content:center;}
+
+/* ③ 추천 결과 (프로토타입2 vRec) */
+.rec{border-radius:24px;background:var(--card);border:1px solid var(--hair);padding:20px 20px 22px;margin-bottom:22px;position:relative;overflow:hidden;}
+.rec::after{content:"";position:absolute;right:-60px;top:-60px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(217,81,44,.16),transparent 70%);}
+.rec .st{font-family:var(--serif);font-weight:700;font-size:42px;line-height:1.1;margin:12px 0 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:relative;}
+.rec .st .badge{width:32px;height:32px;font-size:16px;}
+.rec .st .badge.two{font-size:11px;}
+.rec .who{display:flex;flex-wrap:wrap;gap:6px;position:relative;}
+.rec .who>span{background:var(--paper);border:1px solid var(--hair);border-radius:999px;padding:3px 10px 3px 5px;font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:5px;}
+.rec .rec-sum{position:relative;margin:14px 0 0;font-weight:700;font-size:15px;color:var(--accent-ink);}
+.rec .rec-meta{position:relative;margin:4px 0 0;font-size:13px;color:var(--muted);line-height:1.5;}
+.list{border:1px solid var(--hair);border-radius:20px;overflow:hidden;background:var(--card);}
+.list-h{padding:16px 16px 12px;font-family:var(--serif);font-weight:700;font-size:18px;display:flex;justify-content:space-between;align-items:baseline;}
+.list-h small{font-family:var(--sans);font-size:12px;font-weight:500;color:var(--muted);}
+.place{padding:14px 16px;border-top:1px solid var(--hair);display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;}
+.place.sel{background:var(--accent-mist);}
+.place b{font-size:16px;display:block;font-weight:700;}
+.place em{font-style:normal;font-size:12px;color:var(--muted);}
+.pl-btns{display:flex;gap:6px;}
+.mini{border:1px solid var(--hair);background:var(--card);border-radius:999px;padding:7px 12px;font-weight:500;font-size:13px;text-decoration:none;color:var(--ink);}
+.mini:hover{border-color:var(--accent);}
+.mini.on{background:var(--accent-ink);border-color:var(--accent-ink);color:#fff;font-weight:700;}
 .done-msg{font-family:var(--serif);font-weight:700;font-size:36px;line-height:1.2;margin:0 0 10px;}
 .done-sub{font-size:14px;color:var(--muted);margin:0 0 26px;display:flex;align-items:center;gap:6px;}
 .ticket{border:1px solid var(--hair);border-radius:24px;overflow:hidden;background:var(--card);box-shadow:0 20px 40px -28px rgba(80,50,30,.45);}

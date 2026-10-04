@@ -16,7 +16,8 @@ export function distanceMeters(a, b) {
 
 /** 여러 역의 중심 좌표(위도·경도 평균). @returns {{lat:number, lng:number}} */
 export function centerOf(stations) {
-  throw new Error('아직 구현되지 않았습니다');
+  const sum = stations.reduce((acc, s) => ({ lat: acc.lat + s.lat, lng: acc.lng + s.lng }), { lat: 0, lng: 0 });
+  return { lat: sum.lat / stations.length, lng: sum.lng / stations.length };
 }
 
 /**
