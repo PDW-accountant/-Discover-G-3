@@ -46,8 +46,9 @@ export function exitApp(steps, win = globalThis.window, onStay = () => {}) {
 //   휴대폰 Chrome은 사용자가 화면을 누르기 전에 페이지가 스스로 만든 기록을 뒤로가기 때 건너뛴다.
 //   그래서 '나가기 확인' 자리는 앱을 열 때가 아니라 첫 화면에서 처음 누르거나 키를 칠 때 만든다(guard).
 //   안내를 띄운 뒤에는 자리를 다시 만들지 않아 다음 뒤로가기는 그대로 나간다. 그 사이 화면을 다시 누르면 자리를 다시 만든다.
-//   화면을 누르기 전에 뒤로가기를 누르면 자리가 없어 한 번에 꺼지던 문제: 안드로이드 크롬 계열은 CloseWatcher가 휴대폰 뒤로가기를
+//   화면을 누르기 전에 뒤로가기를 누르면 자리가 없어 한 번에 꺼지던 문제: 안드로이드 크롬은 CloseWatcher가 휴대폰 뒤로가기를
 //   먼저 받으므로(누르기 전에도) 첫 화면에서 하나 걸어 두고 첫 뒤로가기를 안내로 바꾼다. 안내를 이미 본 뒤의 뒤로가기는 나간다.
+//   카카오톡 안 브라우저는 CloseWatcher를 받지 못해(뒤로가기를 카카오톡이 처리) 이 경우는 그대로 한 번에 닫힌다. 10/4 확인.
 // 브라우저 기록 항목의 state: { eodiga3: 깊이 } (root: true 는 앱을 연 자리 = 첫 화면 바깥)
 
 /**
@@ -69,10 +70,12 @@ export function createNavigator(win, { onExitHint = () => {}, onFallbackHome = g
   const browserHistory = () => { try { return win?.history ?? null; } catch { return null; } };
   const push = (state) => { try { browserHistory().pushState(state, ''); return true; } catch { return false; } };
 
-  /** 첫 화면에서 휴대폰 뒤로가기를 먼저 받을 CloseWatcher를 건다(안드로이드만. PC에선 Esc 키에 반응해서 쓰지 않는다).
+  /** 첫 화면에서 휴대폰 뒤로가기를 먼저 받을 CloseWatcher를 건다(안드로이드 크롬만. PC에선 Esc 키에 반응해서 쓰지 않는다).
+   *  카카오톡 안 브라우저는 뒤로가기를 카카오톡이 직접 처리해 CloseWatcher가 받지 못하고, 걸어 두면 [뒤로] 두 번 닫기까지 막혀서 걸지 않는다.
    *  첫 뒤로가기는 안내, [뒤로]로 안내를 이미 본 뒤라면 나간다. 한 번 받으면 사라져 다음 뒤로가기는 브라우저가 처리한다. */
   function watchBack() {
-    if (watcher || stack.length || typeof win?.CloseWatcher !== 'function' || !/Android/i.test(win.navigator?.userAgent ?? '')) return;
+    const ua = win?.navigator?.userAgent ?? '';
+    if (watcher || stack.length || typeof win?.CloseWatcher !== 'function' || !/Android/i.test(ua) || /KAKAOTALK/i.test(ua)) return;
     try {
       watcher = new win.CloseWatcher();
       watcher.onclose = () => {
@@ -170,6 +173,7 @@ export function createNavigator(win, { onExitHint = () => {}, onFallbackHome = g
     if (usingHistory && !stack.length) {
       if (!exitArmed) return armExit();
       exitArmed = false;
+      unwatchBack(); // 나가기 전에 CloseWatcher를 거둔다 (창 닫기와 부딪히지 않게)
       return onExit(guarded ? 2 : 1);
     }
     if (usingHistory) {

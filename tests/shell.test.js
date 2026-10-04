@@ -6,9 +6,10 @@ import { createNavigator, exitApp } from '../src/js/lib/shell.js';
 // #44 뒤로 버튼·휴대폰 뒤로가기. 브라우저 기록은 가짜 window로 흉내 낸다(back()이 곧바로 popstate를 보낸다).
 // 앱 앞에는 다른 페이지('before')가 하나 있다고 본다. 거기로 돌아가면 앱을 나간 것.
 
-function fakeWindow({ android = false, closeWatcher = android } = {}) {
+function fakeWindow({ android = false, kakao = false, closeWatcher = android } = {}) {
   const win = { entries: [{ state: 'before' }, { state: null }], index: 1, left: false, listeners: {}, watchers: [] };
-  win.navigator = { userAgent: android ? 'Mozilla/5.0 (Linux; Android 14) Chrome/140 Mobile' : 'Mozilla/5.0 (Windows NT 10.0) Chrome/140' };
+  const ua = android ? 'Mozilla/5.0 (Linux; Android 14) Chrome/140 Mobile' : 'Mozilla/5.0 (Windows NT 10.0) Chrome/140';
+  win.navigator = { userAgent: kakao ? `${ua} KAKAOTALK 10.8.0` : ua };
   // CloseWatcher: 휴대폰 뒤로가기를 페이지가 먼저 받는다. 받으면(close) 사라진다
   if (closeWatcher) {
     win.CloseWatcher = class {
@@ -216,6 +217,27 @@ test('#44 안드로이드: 다른 화면에서는 휴대폰 뒤로가기가 이�
   assert.equal(win.left, false);
   win.systemBack();
   assert.equal(win.left, true);
+});
+
+test('#44 카카오톡 안 브라우저: CloseWatcher를 걸지 않고, [뒤로] 두 번이면 나간다 (10/4 회귀 수정)', () => {
+  const { win, nav, screen, hints, exits, pressBack } = setup({ win: fakeWindow({ android: true, kakao: true }) });
+  nav.startAt(screen('route'), null, {});
+  assert.deepEqual(win.watchers, []);
+  pressBack();
+  pressBack();
+  assert.deepEqual(hints, ['hint']);
+  assert.deepEqual(exits, [2]);
+  assert.equal(win.left, true);
+});
+
+test('#44 안드로이드: [뒤로] 두 번으로 나갈 때 걸어 둔 CloseWatcher를 먼저 거둔다', () => {
+  const { win, nav, screen, exits, pressBack } = setup({ win: fakeWindow({ android: true }) });
+  nav.startAt(screen('route'), null, {});
+  assert.equal(win.watchers.length, 1);
+  pressBack();
+  pressBack();
+  assert.deepEqual(win.watchers, []);
+  assert.deepEqual(exits, [2]);
 });
 
 test('#44: PC(안드로이드가 아님)에서는 CloseWatcher를 걸지 않는다 (Esc 키로 종료되지 않게)', () => {
