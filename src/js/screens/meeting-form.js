@@ -1,13 +1,11 @@
-// ① 모임 조건 입력 + 첫 화면 (개발 A) — FUNC-001, FUNC-004(예시로 해보기 버튼), FUNC-020(내 약속 확인하기 버튼), FUNC-021(링크로 입력받기 버튼)
+// ① 모임 조건 입력 + 첫 화면 (개발 A) — FUNC-001, FUNC-004(예시로 해보기 버튼), FUNC-020(내 약속 확인하기 버튼)
 // 모임 목적 버튼 3개(회식/회의/오락, 하나만 선택), 도착 희망 일시(현재 이후만). 둘 다 있으면 다음 단계.
 // 문구는 lib/data.js의 t()로 읽는다.
-// 이번 구현(#19): 목적·도착 일시 입력, '링크로 입력받기'(방 만들기·링크 복사). 저장소가 없으면 그 버튼은 숨긴다(NFR-011).
+// 이번 구현(#19): 목적·도착 일시 입력. '링크로 입력받기'(방 만들기·링크 복사, FUNC-021)는 출발지 입력 화면(participants.js)에 있다.
 // 임시저장·내 약속 확인하기 버튼은 모양만 있고 누르면 준비 중 안내가 뜬다. 각 기능은 FUNC-019·020, 예시로 해보기는 FUNC-004에서 붙인다.
 // 화면 모양은 '모이자 UI 프로토타입2'를 따른다.
 
 import { t } from '../lib/data.js';
-import { createRoom, getStatus } from '../lib/api-client.js';
-import { setHostToken } from '../lib/storage.js';
 import { createShell, el } from '../lib/shell.js';
 import { characterNode } from '../lib/characters.js';
 import { PURPOSES } from '../config.js';
@@ -48,30 +46,18 @@ export function buildMeetingRequest({ purpose, date, hour, min }, now = new Date
   return { request: { purpose, arrival_time: arrival.toISOString() } };
 }
 
-async function copyToClipboard(text) {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 /** 화면을 그린다. @param {HTMLElement} container */
 export async function render(container, params = {}) {
   const initial = defaultArrival();
   const state = {
     purpose: null, dropdownOpen: false,
     date: initial.date, hour: initial.hour, min: initial.min,
-    room: null,        // 방 만들기에 성공하면 { room_id, join_url, host_token }
-    busy: false, message: '', copyNote: '',
-    canInvite: false,  // 저장소가 연결되어 있을 때만 '링크로 입력받기'
+    message: '',
   };
 
   const { screen, foot, toast } = createShell(container, { nav: false });
 
-  // 조건을 바꾸면 이미 만든 링크의 모임 조건과 달라지므로 링크를 지운다.
-  const changed = () => { state.room = null; state.message = ''; state.copyNote = ''; };
+  const changed = () => { state.message = ''; };
 
   function currentRequest() {
     const result = buildMeetingRequest(state);
@@ -85,36 +71,13 @@ export async function render(container, params = {}) {
     if (!request) return draw();
     const fallback = () => toast(t('meeting.nextNotReady'));
     try {
-      Promise.resolve(renderParticipants(container, {
-        ...params, request, room_id: state.room?.room_id, join_url: state.room?.join_url,
-      })).catch(fallback);
+      Promise.resolve(renderParticipants(container, { ...params, request })).catch(fallback);
     } catch {
       fallback();
     }
   }
 
-  async function invite() {
-    const request = currentRequest();
-    if (!request) return draw();
-    state.busy = true;
-    draw();
-    const room = await createRoom(request);
-    state.busy = false;
-    if (room.error) {
-      state.message = t('meeting.inviteFailed');
-    } else {
-      setHostToken(room.room_id, room.host_token);
-      state.room = room;
-    }
-    draw();
-  }
 
-  async function copyLink() {
-    const copied = await copyToClipboard(state.room.join_url);
-    state.copyNote = t(copied ? 'meeting.copied' : 'meeting.copyFailed');
-    draw();
-    if (!copied) screen.querySelector('.link-box input')?.select(); // 복사 권한이 없으면 링크를 선택해 직접 복사하게 한다
-  }
 
   function purposeBlock() {
     const label = state.purpose ? t(`meeting.purpose.${state.purpose}`) : t('meeting.purposePlaceholder');
@@ -162,15 +125,6 @@ export async function render(container, params = {}) {
     ]);
   }
 
-  function linkBlock() {
-    const input = el('input', { type: 'text', readOnly: true, value: state.room.join_url, ariaLabel: t('meeting.linkReady') });
-    return el('div', { className: 'link-box' }, [
-      el('p', { className: 'lead', textContent: t('meeting.linkReady') }),
-      input,
-      el('button', { type: 'button', className: 'btn ghost', textContent: t('meeting.copyLink'), onclick: copyLink }),
-      el('p', { className: 'hint', role: 'status', textContent: state.copyNote }),
-    ]);
-  }
 
   function draw() {
     screen.replaceChildren(
@@ -183,19 +137,11 @@ export async function render(container, params = {}) {
       purposeBlock(),
       timeBlock(),
       el('p', { className: 'error', role: 'alert', textContent: state.message }),
-      ...(state.room ? [linkBlock()] : []),
     );
 
-    const notReady = !state.purpose || state.busy;
     const actions = [
-      el('button', { type: 'button', className: 'btn', textContent: t('meeting.next'), disabled: notReady, onclick: goNext }),
+      el('button', { type: 'button', className: 'btn', textContent: t('meeting.next'), disabled: !state.purpose, onclick: goNext }),
     ];
-    if (state.canInvite && !state.room) {
-      actions.push(el('button', {
-        type: 'button', className: 'btn ghost', disabled: notReady, onclick: invite,
-        textContent: state.busy ? t('meeting.inviting') : t('meeting.invite'),
-      }));
-    }
     actions.push(el('div', { className: 'row2' }, [
       el('button', { type: 'button', className: 'btn ghost sm', textContent: t('meeting.save'), onclick: () => toast(t('meeting.saveSoon')) }),
       el('button', { type: 'button', className: 'btn ghost sm', textContent: t('meeting.mine'), onclick: () => toast(t('meeting.mineSoon')) }),
@@ -204,7 +150,4 @@ export async function render(container, params = {}) {
   }
 
   draw();
-  // 저장소 연결 여부는 화면을 먼저 보여준 뒤 확인한다. 서버가 없으면 버튼 없이 총무 일괄 입력만 쓴다.
-  const status = await getStatus();
-  if (status.rooms) { state.canInvite = true; draw(); }
 }
