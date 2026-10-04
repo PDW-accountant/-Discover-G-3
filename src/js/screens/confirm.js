@@ -17,7 +17,7 @@
 
 import { loadData, t } from '../lib/data.js';
 import { confirmRoom } from '../lib/api-client.js';
-import { addMeeting, getHostToken } from '../lib/storage.js';
+import { addMeeting, clearDraft, getHostToken } from '../lib/storage.js';
 import { createConfirmation, hashUrl, roomUrl } from '../lib/share-link.js';
 import { placeLink } from '../lib/places.js';
 import { buildShareMessage, canShareKakao, copyLink, formatMeetingTime, shareKakao } from '../lib/share.js';
@@ -159,6 +159,7 @@ export async function render(container, params = {}) {
   }
   if (!confirmation.share_url) confirmation = { ...confirmation, share_url: hashUrl(confirmation) };
 
+  clearDraft(); // 확정했으면 입력 임시저장(FUNC-019, #17)은 지운다
   try {
     addMeeting(confirmation); // FUNC-020 내 모임 목록
   } catch { /* FUNC-020(#18) 구현 전 */ }
