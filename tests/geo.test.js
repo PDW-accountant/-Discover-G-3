@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { distanceMeters, estimateTravel } from '../src/js/lib/geo.js';
+import { centerOf, distanceMeters, estimateTravel } from '../src/js/lib/geo.js';
 import { ESTIMATE_METERS_PER_MINUTE } from '../src/js/config.js';
 
 // 구현하면서 test.todo를 실제 테스트로 바꿉니다. 실행: npm test
@@ -9,6 +9,10 @@ test('FUNC-005: 두 역 사이 직선거리가 실제 거리와 1% 이내로 맞
   // 경도가 같고 위도 1도 차이 ≈ 111.2km
   const d = distanceMeters({ lat: 37, lng: 127 }, { lat: 38, lng: 127 });
   assert.ok(Math.abs(d - 111195) / 111195 < 0.01, `${d}m`);
+});
+
+test('FUNC-005: 중심 좌표는 위도·경도 평균', () => {
+  assert.deepEqual(centerOf([{ lat: 37, lng: 127 }, { lat: 38, lng: 128 }]), { lat: 37.5, lng: 127.5 });
 });
 
 test('SFR-020: 같은 역이면 예상 시간 0분, 환승 0, is_estimated=true', () => {
