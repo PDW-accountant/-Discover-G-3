@@ -1,7 +1,12 @@
 // 지하철 이동시간 계산 (개발 C) — FUNC-006
 // 외부 API 없이 공공데이터로 만든 data/transit-graph.json에서 최단 시간을 구한다 (CLAUDE.md 7장).
-// 그래프 노드 = "역id:호선", 간선 = { from, to, minutes, type: 'ride'(같은 호선 인접 역) | 'transfer'(같은 역 다른 호선) }
-// (그래프 파일 형식은 개발 C가 변환 스크립트를 만들며 바꿀 수 있다. 바꾸면 이 주석도 고친다.)
+// 그래프 형식 (scripts/convert.js 가 만듦, #14 10/4 변경):
+//   노드 = "역id:계통id". 계통 = 갈아타지 않고 쭉 갈 수 있는 열차 노선 단위 (예: 1-incheon, 2-main, 5-macheon, 9, 9-express)
+//   routes = [{ id, line, name, express }]  (steps 의 호선·급행 표시에 쓴다)
+//   edges  = { from, to, minutes, type, estimated?, assumed?, filled? }
+//     'ride'     같은 계통 인접 역 운행시간(분). estimated: true 는 공식 값이 없어 열차 시간표로 계산한 값
+//     'transfer' 같은 역 다른 계통 환승 도보시간(분, 대기 미포함) → 여기에 WAIT_MINUTES 를 더한다. 환승 횟수 +1
+//     'swap'     같은 노선 급행↔일반 갈아타기(0분) → WAIT_MINUTES 는 더하지만 환승 횟수에는 세지 않는다
 
 export const WAIT_MINUTES = 3; // 배차 대기 상수. 검증 결과 보고 조정 (CLAUDE.md 10장 미결)
 

@@ -1,3 +1,14 @@
 {
+  "meta": {
+    "generated_by": "node scripts/convert.js",
+    "sources": [
+      {
+        "name": "콘텐츠팀 시트 (초안)",
+        "provider": "모이자_역_카테고리_초안.xlsx 의 역·카테고리·장소 탭",
+        "file": "scripts/input/sheet-*.csv",
+        "license": "팀 자료"
+      }
+    ]
+  },
   "scenarios": []
 }

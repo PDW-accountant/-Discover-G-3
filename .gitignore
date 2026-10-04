@@ -49,3 +49,6 @@ node_modules/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# 열차 시간표 원본 (약 115MB). scripts/timetable/collect-*.cjs 로 다시 받는다
+scripts/timetable/raw/
