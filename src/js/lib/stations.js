@@ -46,8 +46,34 @@ export function normalizeKeyword(keyword) {
 
 const byName = (a, b) => a.name.localeCompare(b.name, 'ko') || String(a.id).localeCompare(String(b.id));
 
+// 한글 초성(자음) 19개 — 완성 글자 코드에서 초성 번호로 찾는다
+const CHOSEONG = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+const SYLLABLE_FIRST = 0xac00;
+const SYLLABLE_LAST = 0xd7a3;
+
+/** 완성 글자의 초성('강' → 'ㄱ'). 한글 완성 글자가 아니면 null. */
+export function initialOf(char) {
+  const code = char.codePointAt(0);
+  if (code < SYLLABLE_FIRST || code > SYLLABLE_LAST) return null;
+  return CHOSEONG[Math.floor((code - SYLLABLE_FIRST) / (21 * 28))];
+}
+
+/** 검색어의 한 글자가 역 이름의 같은 자리 글자와 맞는지: 자음만 쓰면 초성 비교('ㄱ' ↔ '강'), 그 밖은 같은 글자(영문은 대소문자 무시). */
+function charMatches(typed, actual) {
+  if (actual === undefined) return false;
+  if (CHOSEONG.includes(typed)) return typed === actual || initialOf(actual) === typed;
+  return typed.toLowerCase() === actual.toLowerCase();
+}
+
+/** 역 이름(공백 제외)이 검색어로 시작하는지. 글자마다 charMatches. */
+export function startsWithKeyword(name, word) {
+  const actual = [...String(name ?? '').replace(/\s+/g, '')];
+  return [...word].every((typed, i) => charMatches(typed, actual[i]));
+}
+
 /**
- * 가나다 순으로 정렬하고, 검색어가 역 이름에 포함된 역만 남긴다. 검색어가 비면 전체.
+ * 가나다 순으로 정렬하고, 역 이름이 검색어로 **시작하는** 역만 남긴다(10/4 대원 요청). 검색어가 비면 전체.
+ * 'ㄱ' → 첫 글자가 ㄱ으로 시작하는 역(강남·광화문…), '가' → 첫 글자가 '가'인 역(가산디지털단지·가양…), 'ㄱㄴ'·'강ㄴ' → 강남.
  * @param {Array} stations data/stations.json
  * @param {string} keyword
  * @returns {Array} 정렬·필터된 역 목록 (없으면 빈 배열 → 화면에서 '검색 결과가 없어요')
@@ -55,6 +81,6 @@ const byName = (a, b) => a.name.localeCompare(b.name, 'ko') || String(a.id).loca
 export function searchStations(stations, keyword = '') {
   const word = normalizeKeyword(keyword);
   const list = Array.isArray(stations) ? stations : [];
-  const found = word ? list.filter((s) => String(s.name ?? '').replace(/\s+/g, '').includes(word)) : [...list];
+  const found = word ? list.filter((s) => startsWithKeyword(s.name, word)) : [...list];
   return found.sort(byName);
 }
