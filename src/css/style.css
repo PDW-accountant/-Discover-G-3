@@ -218,4 +218,34 @@ input.p-name.invalid{border-color:#cf222e;}
   transition:opacity .2s,transform .2s;
 }
 .toast.show{opacity:1;transform:translate(-50%,0);}
+
+/* 나의 경로 (FUNC-015) — 프로토타입 .acc·.map·.route 그대로 + 구간·출발 시각·장소 줄 */
+.routes{margin-top:16px;}
+.acc{border:1px solid var(--hair);border-radius:18px;margin-bottom:10px;overflow:hidden;background:var(--card);}
+.acc-h{width:100%;border:0;background:var(--card);display:flex;align-items:center;justify-content:space-between;padding:10px 12px 10px 12px;}
+.acc-h .nm{font-weight:700;font-size:16px;display:flex;align-items:center;gap:10px;min-width:0;}
+.acc-h .from{font-size:12px;font-weight:500;color:var(--muted);}
+.acc-h .tg{flex:none;border-radius:999px;padding:6px 12px;font-weight:700;font-size:12px;background:var(--accent-mist);color:var(--accent-ink);}
+.acc.open .acc-h{border-bottom:1px solid var(--hair);}
+.acc.open .acc-h .tg{background:var(--accent-ink);color:#fff;}
+.acc-b{display:none;}
+.acc.open .acc-b{display:block;}
+.map{display:block;width:100%;height:auto;}
+.map-link{display:block;padding:14px;text-align:center;font-weight:700;font-size:14px;color:var(--accent-ink);background:var(--accent-mist);}
+.route{padding:12px 14px;border-top:1px solid var(--hair);display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-weight:700;font-size:14px;}
+.map-box + .route{border-top:0;}
+.route .arrow{display:flex;flex-direction:column;align-items:center;font-size:11px;color:var(--accent-ink);margin:0 4px;}
+.route .arrow svg{width:46px;height:10px;}
+.route .meta{width:100%;font-size:12px;font-weight:500;color:var(--muted);}
+.route .est{width:100%;font-size:12px;font-weight:700;color:var(--accent-ink);background:var(--accent-mist);border-radius:8px;padding:6px 8px;}
+.steps{list-style:none;margin:0;padding:0 14px 10px;}
+.steps li{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;border-top:1px dashed var(--hair);}
+.steps .seg{flex:1;min-width:0;}
+.steps .min{font-weight:700;color:var(--muted);}
+.depart{padding:10px 14px;border-top:1px solid var(--hair);font-size:14px;font-weight:700;color:var(--accent-ink);}
+.depart.now{background:var(--accent-mist);}
+.route-place{padding:10px 14px;border-top:1px solid var(--hair);display:flex;align-items:center;gap:8px;font-size:14px;}
+.route-place .k{color:var(--muted);flex:none;}
+.route-place .v{flex:1;min-width:0;font-weight:700;overflow-wrap:anywhere;}
+.route-place .view{flex:none;border-radius:999px;padding:6px 12px;font-weight:700;font-size:12px;background:var(--accent-mist);color:var(--accent-ink);text-decoration:none;}
 @media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important;} }
