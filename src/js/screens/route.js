@@ -104,7 +104,6 @@ export function buildRouteInfo(confirmation, nickname, {
     departure = null; // 권장 출발 시각(#22) 구현 전 → 그 줄을 숨긴다
   }
 
-  const placeData = places.find((p) => p.place_id === confirmation.pl);
   return {
     nickname: person.n,
     from,
@@ -115,8 +114,14 @@ export function buildRouteInfo(confirmation, nickname, {
     steps,
     is_estimated: !sameStation && !computed,
     departure,
-    place: placeData ? { name: placeData.name, url: link(placeData, to.name) } : null,
+    place: meetingPlace(confirmation, places, to.name, link),
   };
+}
+
+/** 확정된 만남 장소 {name, url}. 장소 데이터에서 찾지 못하면 null (그 줄을 숨긴다). */
+export function meetingPlace(confirmation, places = [], stationName = '', link = linkFor) {
+  const place = places.find((p) => p.place_id === confirmation?.pl);
+  return place ? { name: place.name, url: link(place, stationName) } : null;
 }
 
 /** 방 명단에서 이 기기의 참여자 닉네임을 찾는다(각자 입력 FUNC-022의 id 규칙: pid, pid_2…). */
@@ -152,15 +157,18 @@ function stationLabel(station) {
   return t('confirm.station', { name: station.name });
 }
 
+/** '만남 장소 | 이름 | 보기' 줄. 화면 위쪽(도착 역 아래)과 펼친 칸 안에 쓴다. */
+function placeNode(place, className = 'route-place') {
+  return el('div', { className }, [
+    el('span', { className: 'k', textContent: t('route.place') }),
+    el('span', { className: 'v', textContent: place.name }),
+    el('a', { className: 'view', href: place.url, target: '_blank', rel: 'noopener', textContent: t('route.view') }),
+  ]);
+}
+
 /** 펼친 칸의 내용: 지도 → 요약 → 구간 → 권장 출발 시각 → 만남 장소 */
 function routeBody(info) {
-  const placeRow = info.place
-    ? el('div', { className: 'route-place' }, [
-      el('span', { className: 'k', textContent: t('route.place') }),
-      el('span', { className: 'v', textContent: info.place.name }),
-      el('a', { className: 'view', href: info.place.url, target: '_blank', rel: 'noopener', textContent: t('route.view') }),
-    ])
-    : null;
+  const placeRow = info.place ? placeNode(info.place) : null;
 
   if (info.same_station) {
     return [el('div', { className: 'route' }, [t('route.same')]), ...(placeRow ? [placeRow] : [])];
@@ -225,6 +233,7 @@ export async function render(container, params = {}) {
   const stationsById = Object.fromEntries((data.stations ?? []).map((s) => [s.id, s]));
   const options = { stationsById, graph: data.transitGraph ?? null, places: data.places ?? [] };
   const toStation = resolveStation(confirmation.s, stationsById);
+  const place = meetingPlace(confirmation, options.places, toStation.name);
 
   // 방 링크로 왔으면 이 기기의 참여자를 자동으로 펼친다. 명단에 없으면 안내 후 직접 고르게 한다.
   let deviceId = null;
@@ -239,6 +248,8 @@ export async function render(container, params = {}) {
     el('div', { className: 'eyebrow', textContent: t('route.eyebrow') }),
     el('h2', { className: 'q big', textContent: t('route.title') }),
     el('p', { className: 'lead', textContent: t('route.lead', { station: toStation.name, time: formatArrival(confirmation.a) }) }),
+    // 참여자 칸을 펼치지 않아도 만남 장소가 보이게 도착 역 바로 아래에 둔다
+    ...(place ? [placeNode(place, 'route-place top')] : []),
     el('p', { className: 'hint', textContent: t('route.timeBasis') }),
     ...(notice ? [el('p', { className: 'error', role: 'alert', textContent: notice })] : []),
     list,
