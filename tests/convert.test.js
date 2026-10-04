@@ -137,6 +137,18 @@ test('FUNC-016: 출발역은 수도권 전체 — 서울 밖 역(성남·고양�
   }
 });
 
+test('FUNC-016: 수도권 모든 역이 그래프에 있다 (동탄은 GTX-A, 운천·임진강은 문산에서 갈아타는 셔틀)', () => {
+  const inGraph = new Set(graph.edges.flatMap((e) => [e.from.split(':')[0], e.to.split(':')[0]]));
+  assert.deepEqual(stations.filter((s) => !inGraph.has(s.id)).map((s) => s.name), []);
+  assert.ok(edge(node('동탄', 'GTX-A'), node('구성', 'GTX-A')));
+  assert.ok(edge(node('임진강', '경의중앙-imjingang'), node('운천', '경의중앙-imjingang')));
+  assert.equal(edge(node('문산', '경의중앙'), node('문산', '경의중앙-imjingang')).type, 'transfer');
+});
+
+test('FUNC-016: 하루 2회만 다니는 운천·임진강에는 trains_per_day가 있다', () => {
+  assert.deepEqual(stations.filter((s) => s.trains_per_day).map((s) => [s.name, s.trains_per_day]), [['운천', 2], ['임진강', 2]]);
+});
+
 test('FUNC-016: 변환을 두 번 실행해도 결과가 같다', () => {
   const again = convert();
   assert.equal(formatJson(again.graph), formatJson(graph));

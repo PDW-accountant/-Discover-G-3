@@ -11,7 +11,7 @@
 //   '찾기'는 방의 참여자 목록으로 결과 화면(#7, result.js)을 연다. 방이 없으면 로컬 모드(총무가 모두 입력)로 동작한다.
 
 import { loadData, t } from '../lib/data.js';
-import { lineBadge, searchStations } from '../lib/stations.js';
+import { lineBadge, rareServiceNotices, searchStations } from '../lib/stations.js';
 import { createShell, el } from '../lib/shell.js';
 import { characterNode } from '../lib/characters.js';
 import { createRoom, deleteParticipant, getRoom, getStatus, saveParticipant } from '../lib/api-client.js';
@@ -459,6 +459,8 @@ export async function render(container, params = {}) {
       }));
     }
     if (!roomId || rows.length) nodes.push(el('p', { className: 'hint', textContent: t('join.nicknameHint', { max: NICKNAME_MAX_LENGTH }) }));
+    const chosen = [...remote(), ...rows].map((p) => stationById(p.origin_station_id));
+    nodes.push(...rareServiceNotices(chosen).map((text) => el('p', { className: 'notice', textContent: text })));
     body.replaceChildren(...nodes);
   }
 

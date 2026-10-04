@@ -1,6 +1,9 @@
 // 출발역 목록 정렬·검색 (개발 A) — FUNC-002
-// Station: { id, name, lines[], lat, lng, seoul } (data/stations.json). 수도권 지하철역 전체(서울 밖 역 포함, 10/4 변경. seoul은 서울 여부 참고용).
+// Station: { id, name, lines[], lat, lng, seoul, trains_per_day? } (data/stations.json). 수도권 지하철역 전체(서울 밖 역 포함, 10/4 변경. seoul은 서울 여부 참고용).
 // name에는 끝의 '역'이 없다('서울역'도 '서울'). 화면은 copy.json의 '{name}역'으로 붙여 쓴다.
+// trains_per_day: 열차가 하루 몇 번만 다니는 역에만 있다(예: 임진강·운천 2회). 화면은 rareServiceNotices로 경고한다.
+
+import { t } from './data.js';
 
 // 호선 표시: [동그라미 안 글자, 노선 색, 글자 색]. 목록에 없는 호선은 이름 그대로 회색으로 보여준다.
 // 화면(join.js, participants.js, route.js)은 이 목록만 쓴다(lineBadge).
@@ -21,6 +24,18 @@ export const LINE_BADGES = {
 export function lineBadge(line) {
   const [label, background, color] = LINE_BADGES[line] ?? [String(line), '#8c959f', '#fff'];
   return { label, background, color };
+}
+
+/**
+ * 열차가 하루 몇 번만 다니는 역(trains_per_day)의 경고 문구. 같은 역은 한 번만, 없는 역(null)은 건너뛴다.
+ * @param {Array<Station|null|undefined>} stations 고른 출발역·만남 역 등
+ * @returns {string[]} '임진강역은 열차가 하루 2회만 다녀요. …'
+ */
+export function rareServiceNotices(stations = []) {
+  const seen = new Set();
+  return stations
+    .filter((s) => s?.trains_per_day && !seen.has(s.id) && seen.add(s.id))
+    .map((s) => t('station.rareService', { name: s.name, count: s.trains_per_day }));
 }
 
 /** 검색어 정리: 공백을 없애고, 끝에 붙은 '역'을 뗀다('강남역' → '강남'). '역' 한 글자만이면 그대로 둔다. */

@@ -6,9 +6,9 @@
   "verified": "서울교통공사 공식 역간 소요시간(1~8호선)과 비교해 99%가 30초 이내로 일치했다. 열차번호가 없어 급행이 섞인 노선(9호선)은 정확도가 낮아 서울 시간표(timetable-seoul.json)를 먼저 쓴다.",
   "tool": "scripts/timetable/collect-tago.cjs → scripts/timetable/build-tago.cjs",
   "counts": {
-   "segments": 1526,
-   "measured": 1455,
-   "mirror": 71
+   "segments": 1532,
+   "measured": 1458,
+   "mirror": 74
   }
  },
  "segments": [
@@ -1151,6 +1151,16 @@
    "sec": 390,
    "method": "arr",
    "n": 60
+  },
+  {
+   "fromId": "MTRGXAX110",
+   "toId": "MTRSRAX111",
+   "from": "구성",
+   "to": "동탄",
+   "line": "GTX-A",
+   "sec": 420,
+   "method": "arr",
+   "n": 55
   },
   {
    "fromId": "MTRIC7751",
@@ -7944,6 +7954,16 @@
   },
   {
    "fromId": "MTRKRK4K335",
+   "toId": "MTRKRK4K336",
+   "from": "문산",
+   "to": "운천",
+   "line": "경의중앙",
+   "sec": 360,
+   "method": "mirror",
+   "n": 0
+  },
+  {
+   "fromId": "MTRKRK4K335",
    "toId": "MTRKRK4P313",
    "from": "문산",
    "to": "서울역",
@@ -7951,6 +7971,36 @@
    "sec": 222,
    "method": "mirror",
    "n": 0
+  },
+  {
+   "fromId": "MTRKRK4K336",
+   "toId": "MTRKRK4K335",
+   "from": "운천",
+   "to": "문산",
+   "line": "경의중앙",
+   "sec": 360,
+   "method": "arr",
+   "n": 2
+  },
+  {
+   "fromId": "MTRKRK4K336",
+   "toId": "MTRKRK4K337",
+   "from": "운천",
+   "to": "임진강",
+   "line": "경의중앙",
+   "sec": 240,
+   "method": "mirror",
+   "n": 0
+  },
+  {
+   "fromId": "MTRKRK4K337",
+   "toId": "MTRKRK4K336",
+   "from": "임진강",
+   "to": "운천",
+   "line": "경의중앙",
+   "sec": 240,
+   "method": "arr",
+   "n": 2
   },
   {
    "fromId": "MTRKRK4P313",
@@ -14531,6 +14581,16 @@
    "sec": 90,
    "method": "arr",
    "n": 107
+  },
+  {
+   "fromId": "MTRSRAX111",
+   "toId": "MTRGXAX110",
+   "from": "동탄",
+   "to": "구성",
+   "line": "GTX-A",
+   "sec": 420,
+   "method": "mirror",
+   "n": 0
   },
   {
    "fromId": "MTRSWWSS16",

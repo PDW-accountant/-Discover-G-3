@@ -88,6 +88,9 @@ h2.q.big{font-size:26px;}
 .block{margin-bottom:30px;}
 .hint{font-size:12px;color:var(--muted);margin:12px 2px 0;line-height:1.6;}
 .error{min-height:1em;margin:10px 2px 0;font-size:13px;color:#cf222e;}
+/* 운행이 드문 역 경고 (임진강·운천 하루 2회) — 나의 경로의 '예상' 안내(.route .est)와 같은 모양 */
+.notice{margin:10px 2px 0;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:700;line-height:1.5;color:var(--accent-ink);background:var(--accent-mist);}
+.acc-b .notice{margin:0 14px 10px;}
 
 /* 드롭다운 */
 .dd{border:1px solid var(--hair);border-radius:14px;overflow:hidden;background:var(--card);}
