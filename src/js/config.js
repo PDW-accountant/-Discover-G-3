@@ -14,4 +14,5 @@ export const POLL_STOP_AFTER_MS = 10 * 60 * 1000;  // 변화 없으면 자동 �
 export const RESULT_TIMEOUT_MS = 10000;            // 결과 대기 한도 (NFR-001)
 export const MAX_SAVED_MEETINGS = 20;              // 내 모임 목록 최대 건수 (FUNC-020)
 export const WAIT_MINUTES = 3;                     // 배차 대기(분). 처음 탈 때·환승·급행 갈아타기마다 더한다 (FUNC-006). 검증 후 조정
+export const DWELL_MINUTES = 0.5;                  // 정차 시간(분, 30초). 열차가 중간에 서는 역마다 더한다 — 공공데이터 역간 시간은 달리는 시간만이라서 (#25 10/4)
 export const ESTIMATE_METERS_PER_MINUTE = 70;      // 그래프에 없는 역의 직선거리 예상 속도(분속 m) (SFR-020)

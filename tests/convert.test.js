@@ -162,7 +162,7 @@ test('FUNC-016: 시연 시나리오 시트를 demo.json으로 바꾼다 (참여�
   assert.deepEqual(sc.participants.map((p) => [p.nickname, stations.find((s) => s.id === p.origin_station_id).name]), [
     ['감자', '연신내'], ['고구마', '청량리'], ['옥수수', '마포'], ['단호박', '압구정'],
   ]);
-  assert.deepEqual(sc.expected, { station_id: byName('종로3가').id, score: 14.67, saved_minutes: 4 });
+  assert.deepEqual(sc.expected, { station_id: byName('종로3가').id, score: 18.24, saved_minutes: 4 }); // 10/4 정차 시간 반영 후 기대값
 });
 
 test('FUNC-016: 변환을 두 번 실행해도 결과가 같다', () => {

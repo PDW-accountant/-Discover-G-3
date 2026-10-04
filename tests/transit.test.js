@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { travelTime, travelTimes } from '../src/js/lib/transit.js';
-import { WAIT_MINUTES } from '../src/js/config.js';
+import { DWELL_MINUTES, WAIT_MINUTES } from '../src/js/config.js';
 
 // 실행: npm test   (FUNC-006 #25 지하철 이동시간 계산)
 
@@ -31,13 +31,14 @@ const fake = {
     ...both('E:r3', 'G:r3', 1, 'ride'),
   ],
 };
-const step = (line, express, from, to, minutes) => ({ line, express, from, to, minutes });
+const step = (line, express, from, to, minutes, change) => ({ line, express, from, to, minutes, ...(change ? { change } : {}) });
 
 test('FUNC-006: 환승하면 도보시간 + 대기, 환승 횟수 1, 구간이 호선별로 나뉜다', () => {
-  // 3(A→B) + 1+3(환승) + 4(B→D) + 처음 대기 3 = 14
+  // 3(A→B) + 1+3(환승) + 4(B→D) + 처음 대기 3 = 14 (중간에 서는 역이 없어 정차 시간 없음)
+  // 두 번째 구간에 그 앞 갈아타기(도보 1분 + 대기 3분)를 담는다 (#53 세부 경로 표의 환승 줄)
   assert.deepEqual(travelTime(fake, S.A, S.D), {
     minutes: 14, transfers: 1, is_estimated: false,
-    steps: [step('1', false, 'A', 'B', 3), step('2', false, 'B', 'D', 4)],
+    steps: [step('1', false, 'A', 'B', 3), step('2', false, 'B', 'D', 4, { type: 'transfer', walk: 1, wait: 3 })],
   });
 });
 
@@ -50,7 +51,7 @@ test('FUNC-006: 급행↔일반 갈아타기(swap)는 대기만 더하고 환승
   // 일반만: 8 + 3 = 11분, 급행 A→C 2 + 갈아타기 대기 3 + 일반 C→K 2 + 처음 대기 3 = 10분
   assert.deepEqual(travelTime(fake, S.A, S.K), {
     minutes: 10, transfers: 0, is_estimated: false,
-    steps: [step('1', true, 'A', 'C', 2), step('1', false, 'C', 'K', 2)],
+    steps: [step('1', true, 'A', 'C', 2), step('1', false, 'C', 'K', 2, { type: 'swap', walk: 0, wait: 3 })],
   });
 });
 
@@ -81,6 +82,17 @@ test('FUNC-006: 대기 상수는 config.js의 WAIT_MINUTES (기본 3분)', () =>
   assert.equal(WAIT_MINUTES, 3);
 });
 
+test('#25: 정차 시간은 config.js의 DWELL_MINUTES (30초)', () => {
+  assert.equal(DWELL_MINUTES, 0.5);
+});
+
+test('#25: 열차가 중간에 서는 역마다 정차 시간이 붙고, 타는 역·내리는 역에는 붙지 않는다', () => {
+  // B → K: 일반 B─3─C─2─K, 중간에 서는 역 C 1곳 → 5 + 0.5 + 처음 대기 3 = 8.5 → 9분 (정차 없으면 8분)
+  assert.deepEqual(travelTime(fake, S.B, S.K), { minutes: 9, transfers: 0, is_estimated: false, steps: [step('1', false, 'B', 'K', 6)] });
+  // A → B: 한 정거장이면 중간 역이 없어 그대로 3 + 3 = 6분
+  assert.equal(travelTime(fake, S.A, S.B).minutes, 6);
+});
+
 // ---------- 실제 데이터 (data/transit-graph.json) ----------
 
 const graph = JSON.parse(readFileSync(new URL('../data/transit-graph.json', import.meta.url), 'utf8'));
@@ -95,6 +107,13 @@ test('FUNC-006: 연신내 → 종로3가가 지도 앱 시간(17분)과 ±5분 �
   assert.ok(Math.abs(r.minutes - 17) <= 5, `${r.minutes}분`);
   assert.equal(r.transfers, 0);
   assert.equal(r.is_estimated, false);
+});
+
+test('#25: 역이 많은 긴 구간도 지도 앱 시간과 ±5분 안 (정차 시간 반영 전에는 홍대입구 → 잠실이 31분으로 10분 이상 짧았다)', () => {
+  const hongdae = trip('홍대입구', '잠실');
+  assert.ok(Math.abs(hongdae.minutes - 42) <= 5, `홍대입구 → 잠실 ${hongdae.minutes}분`); // 2호선 약 20개 역
+  const nowon = trip('노원', '사당');
+  assert.ok(Math.abs(nowon.minutes - 50) <= 5, `노원 → 사당 ${nowon.minutes}분`);     // 4호선 직통
 });
 
 test('FUNC-006: 잠실 → 강남이 지도 앱 시간(12분)과 ±5분 안', () => {

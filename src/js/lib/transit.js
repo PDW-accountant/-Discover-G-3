@@ -7,8 +7,11 @@
 //     'ride'     같은 계통 인접 역 운행시간(분). estimated: true 는 공식 값이 없어 열차 시간표로 계산한 값
 //     'transfer' 같은 역 다른 계통 환승 도보시간(분, 대기 미포함) → 여기에 WAIT_MINUTES 를 더한다. 환승 횟수 +1
 //     'swap'     같은 노선 급행↔일반 갈아타기(0분) → WAIT_MINUTES 는 더하지만 환승 횟수에는 세지 않는다
+// 정차 시간(#25 10/4): 역간 시간(ride)은 달리는 시간만이라, 열차가 중간에 서는 역마다 DWELL_MINUTES(30초)를 더한다.
+//   ride 간선마다 더한 뒤 구간(같은 계통으로 쭉 탄 부분)마다 내리는 역 1번을 빼서 중간 역만 남긴다.
+//   급행 계통은 서는 역끼리만 이어져 있어 건너뛰는 역에는 붙지 않는다.
 
-import { WAIT_MINUTES } from '../config.js';
+import { DWELL_MINUTES, WAIT_MINUTES } from '../config.js';
 import { estimateTravel } from './geo.js';
 
 const prepared = new WeakMap(); // 그래프 객체 → 계산용으로 정리한 값 (한 번만 만든다)
@@ -31,7 +34,7 @@ function prepare(graph) {
   };
   for (const e of graph.edges) {
     const from = nodeOf(e.from), to = nodeOf(e.to);
-    adj[from].push({ to, type: e.type, cost: e.type === 'ride' ? e.minutes : e.minutes + WAIT_MINUTES });
+    adj[from].push({ to, type: e.type, cost: e.type === 'ride' ? e.minutes + DWELL_MINUTES : e.minutes + WAIT_MINUTES });
   }
   const byStation = new Map();
   station.forEach((id, node) => (byStation.get(id) ?? byStation.set(id, []).get(id)).push(node));
@@ -108,29 +111,41 @@ function routeTo(g, tree, toId) {
   while (tree.prev[path[0]] >= 0) path.unshift(tree.prev[path[0]]);
 
   // 같은 계통으로 이어 탄 구간을 하나로 묶는다. 환승·급행 갈아타기에서 구간이 나뉜다.
+  // 구간 사이의 갈아타기는 다음 구간의 change에 담는다: { type: 'transfer'|'swap', walk: 도보 분, wait: 대기 분 }
   const steps = [];
-  let transfers = 0, current = null;
+  let transfers = 0, current = null, pending = null;
   for (let i = 1; i < path.length; i++) {
     const u = path[i - 1], v = path[i];
     const type = tree.prevType[v];
+    const cost = tree.dist[v] - tree.dist[u];
     if (type === 'ride') {
-      const ride = tree.dist[v] - tree.dist[u];
       if (current) {
         current.to = g.station[v];
-        current.minutes += ride;
+        current.minutes += cost;
       } else {
         const r = g.routes.get(g.route[u]);
-        current = { line: r?.line ?? g.route[u], express: Boolean(r?.express), from: g.station[u], to: g.station[v], minutes: ride };
+        current = { line: r?.line ?? g.route[u], express: Boolean(r?.express), from: g.station[u], to: g.station[v], minutes: cost };
+        if (pending) current.change = pending;
+        pending = null;
         steps.push(current);
       }
     } else {
       if (type === 'transfer') transfers += 1;
+      pending = {
+        type: type === 'transfer' || pending?.type === 'transfer' ? 'transfer' : 'swap',
+        walk: (pending?.walk ?? 0) + (cost - WAIT_MINUTES),
+        wait: (pending?.wait ?? 0) + WAIT_MINUTES,
+      };
       current = null;
     }
   }
-  for (const s of steps) s.minutes = Math.max(1, Math.round(s.minutes));
+  // 구간마다 내리는 역의 정차 1번을 빼서 중간에 서는 역의 정차만 남긴다
+  for (const s of steps) {
+    s.minutes = Math.max(1, Math.round(s.minutes - DWELL_MINUTES));
+    if (s.change) s.change = { ...s.change, walk: Math.round(s.change.walk) };
+  }
 
-  return { minutes: ceilMinutes(tree.dist[best] + WAIT_MINUTES), transfers, steps, is_estimated: false };
+  return { minutes: ceilMinutes(tree.dist[best] + WAIT_MINUTES - DWELL_MINUTES * steps.length), transfers, steps, is_estimated: false };
 }
 
 /** 한 출발역 기준 계산기(다익스트라 1회). 그래프에 없는 역·도달할 수 없는 역은 직선거리 예상 시간으로 대체한다. */
@@ -145,13 +160,14 @@ function calculatorFrom(graph, from) {
 
 /**
  * 출발역 → 도착역 최단 이동시간 (다익스트라). 출발역이 여러 계통이면 모든 계통 노드에서 시작한다.
- * 결과 = 운행시간 합 + 환승 도보시간 합 + WAIT_MINUTES × (환승·급행 갈아타기 횟수 + 1), 분 단위 올림.
+ * 결과 = 운행시간 합 + 중간 정차 DWELL_MINUTES × 서는 역 수 + 환승 도보시간 합 + WAIT_MINUTES × (환승·급행 갈아타기 횟수 + 1), 분 단위 올림.
  * 같은 역이면 0분. 그래프에서 도달할 수 없거나 그래프에 없는 역이면 geo.estimateTravel로 대체(is_estimated=true).
  * @param {object|null} graph data/transit-graph.json
  * @param {Station} fromStation
  * @param {Station} toStation
- * @returns {{minutes:number, transfers:number, steps:Array<{line, express, from, to, minutes}>, is_estimated:boolean}}
- *   transfers 는 급행↔일반 갈아타기(swap)를 세지 않는다. steps 의 from·to 는 역 id, line 은 호선('1', '9', '경의중앙' 등)
+ * @returns {{minutes:number, transfers:number, steps:Array<{line, express, from, to, minutes, change?}>, is_estimated:boolean}}
+ *   transfers 는 급행↔일반 갈아타기(swap)를 세지 않는다. steps 의 from·to 는 역 id, line 은 호선('1', '9', '경의중앙' 등).
+ *   steps[i].minutes 는 중간 정차 포함. 두 번째 구간부터 change = { type: 'transfer'|'swap', walk: 도보 분, wait: 대기 분 }(그 구간을 타기 전 갈아타기)
  */
 export function travelTime(graph, fromStation, toStation) {
   return calculatorFrom(graph, fromStation)(toStation);
