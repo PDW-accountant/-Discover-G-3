@@ -134,6 +134,8 @@ h2.q.big{font-size:26px;}
 .btn:disabled{background:#E9E3DB;color:#8C847B;cursor:not-allowed;}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .btn.sm{padding:12px 10px;font-size:14px;font-weight:500;}
+/* 첫 화면 예시로 해보기 (FUNC-004) — 프로토타입에 없어 기존 버튼을 세로로 쌓는다 */
+.demo-list{display:grid;gap:8px;}
 
 /* 링크로 입력받기 (FUNC-021) */
 .link-box{display:grid;gap:10px;margin-bottom:12px;padding:16px;border:1px solid var(--hair);border-radius:18px;background:var(--accent-mist);}

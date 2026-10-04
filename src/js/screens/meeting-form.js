@@ -2,14 +2,17 @@
 // 모임 목적 버튼 3개(회식/회의/오락, 하나만 선택), 도착 희망 일시(현재 이후만). 둘 다 있으면 다음 단계.
 // 문구는 lib/data.js의 t()로 읽는다.
 // 이번 구현(#19): 목적·도착 일시 입력. '링크로 입력받기'(방 만들기·링크 복사, FUNC-021)는 출발지 입력 화면(participants.js)에 있다.
-// 임시저장·내 약속 확인하기 버튼은 모양만 있고 누르면 준비 중 안내가 뜬다. 각 기능은 FUNC-019·020, 예시로 해보기는 FUNC-004에서 붙인다.
-// 화면 모양은 '모이자 UI 프로토타입2'를 따른다.
+// 임시저장·내 약속 확인하기 버튼은 모양만 있고 누르면 준비 중 안내가 뜬다. 각 기능은 FUNC-019·020에서 붙인다.
+// 예시로 해보기(FUNC-004): data/demo.json 시나리오 버튼을 누르면 그 조건·참여자로 바로 추천 결과 화면을 연다. 시나리오가 없으면 숨긴다.
+// 화면 모양은 '모이자 UI 프로토타입2'를 따른다 (예시로 해보기는 프로토타입에 없어 기존 클래스로 아래쪽에 둔다).
 
-import { t } from '../lib/data.js';
+import { loadData, t } from '../lib/data.js';
+import { loadScenario } from '../lib/demo.js';
 import { createShell, el, go } from '../lib/shell.js';
 import { characterNode } from '../lib/characters.js';
 import { PURPOSES } from '../config.js';
 import { render as renderParticipants } from './participants.js';
+import { render as renderResult } from './result.js';
 
 const MINUTES = ['00', '10', '20', '30', '40', '50'];
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
@@ -57,6 +60,7 @@ export async function render(container, params = {}) {
   };
 
   const { screen, foot, toast } = createShell(container, { nav: false });
+  const demo = await loadData().then((d) => d.demo).catch(() => null);
 
   const changed = () => { state.message = ''; };
 
@@ -79,7 +83,27 @@ export async function render(container, params = {}) {
     }
   }
 
+  /** 예시로 해보기(FUNC-004): 시나리오의 목적·도착 시각·참여자로 바로 추천 결과 화면을 연다. 뒤로 오면 이 화면. */
+  function tryDemo(scenarioId) {
+    const scenario = loadScenario(demo, scenarioId);
+    if (!scenario) return;
+    const form = { purpose: state.purpose, date: state.date, hour: state.hour, min: state.min };
+    go(renderResult, container, scenario, { back: { ...params, form } });
+  }
 
+  function demoBlock() {
+    const scenarios = demo?.scenarios ?? [];
+    if (!scenarios.length) return null;
+    return el('div', { className: 'block demo' }, [
+      el('p', { className: 'opt-label', textContent: t('meeting.demoTitle') }),
+      el('div', { className: 'demo-list' }, scenarios.map((s) => el('button', {
+        type: 'button', className: 'btn ghost sm',
+        textContent: t('meeting.demoOption', { name: s.name, count: s.participants.length }),
+        onclick: () => tryDemo(s.id),
+      }))),
+      el('p', { className: 'hint', textContent: t('meeting.demoHint') }),
+    ]);
+  }
 
   function purposeBlock() {
     const label = state.purpose ? t(`meeting.purpose.${state.purpose}`) : t('meeting.purposePlaceholder');
@@ -139,6 +163,7 @@ export async function render(container, params = {}) {
       purposeBlock(),
       timeBlock(),
       el('p', { className: 'error', role: 'alert', textContent: state.message }),
+      ...[demoBlock()].filter(Boolean),
     );
 
     const actions = [
