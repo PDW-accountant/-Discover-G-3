@@ -21,7 +21,7 @@ import { addMeeting, getHostToken } from '../lib/storage.js';
 import { createConfirmation, hashUrl, roomUrl } from '../lib/share-link.js';
 import { placeLink } from '../lib/places.js';
 import { buildShareMessage, canShareKakao, copyLink, formatMeetingTime, shareKakao } from '../lib/share.js';
-import { createShell, el } from '../lib/shell.js';
+import { createShell, el, go } from '../lib/shell.js';
 import { characterNode } from '../lib/characters.js';
 import { render as renderRoute } from './route.js';
 
@@ -52,7 +52,8 @@ function showMessage(container, text, className = 'lead') {
 function openRoute(container, params) {
   const fallback = () => showMessage(container, t('confirm.routeNotReady'));
   try {
-    Promise.resolve(renderRoute(container, params)).catch(fallback);
+    // 경로에서 뒤로 돌아오면(#44) 이미 만든 확정 정보({ confirmation, room_id })로 다시 그린다 — 방 저장을 되풀이하지 않는다
+    Promise.resolve(go(renderRoute, container, params, { back: params })).catch(fallback);
   } catch {
     fallback();
   }

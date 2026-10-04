@@ -13,7 +13,7 @@ import { lineBadge, rareServiceNotices } from '../lib/stations.js';
 import { travelTimes } from '../lib/transit.js';
 import { compareWithMidpoint, pickCandidates, rankStations } from '../lib/recommend.js';
 import { placeLink, placesFor } from '../lib/places.js';
-import { createShell, el } from '../lib/shell.js';
+import { createShell, el, go } from '../lib/shell.js';
 import { characterNode } from '../lib/characters.js';
 import { render as renderConfirm } from './confirm.js';
 
@@ -156,7 +156,7 @@ export async function render(container, params = {}) {
     foot.replaceChildren(el('button', {
       type: 'button', className: 'btn', disabled: !selected,
       textContent: t(selected ? 'result.confirm' : 'result.pickPlace'),
-      onclick: () => renderConfirm(container, {
+      onclick: () => go(renderConfirm, container, {
         request, selected_result: top, place: selected, participants, room_id: params.room_id,
       }),
     }));
