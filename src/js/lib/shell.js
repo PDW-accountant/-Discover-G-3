@@ -21,32 +21,44 @@ function goHome() {
 // ---------- 화면 이동 기록 (#44) ----------
 // 화면을 바꿀 때 go()로 '이전 화면 + 그때 입력값'을 앱 안 기록에 쌓고 브라우저 기록도 하나 남긴다.
 // [뒤로] 버튼과 휴대폰 뒤로가기는 둘 다 브라우저 뒤로가기(popstate)로 처리해 바로 이전 화면을 그때 입력값으로 다시 그린다.
-// 첫 화면에서 휴대폰 뒤로가기는 브라우저 기본 동작대로 앱 밖으로 나간다('두 번 누르면 종료'는 휴대폰 브라우저가
-// 페이지가 스스로 만든 기록을 건너뛰어 웹앱에서 보장할 수 없어 넣지 않는다, 10/4).
-// 화면 위 [뒤로]는 더 돌아갈 화면이 없으면 앱 첫 화면으로 간다(링크로 바로 들어온 화면에서 사이트를 벗어나지 않게).
-// 브라우저 기록 항목의 state: { eodiga3: 깊이 }
+// 첫 화면에서 뒤로가기: 1번이면 '한 번 더 누르면 종료돼요', 2초 안에 2번이면 앱 밖으로 나간다.
+// 브라우저 기록 항목의 state: { eodiga3: 깊이 } (root: true 는 첫 화면 바깥 = 나가기 확인용 자리)
+export const EXIT_WINDOW_MS = 2000;
 
 /**
  * 화면 이동 기록을 만든다. 화면 코드는 아래 기본 인스턴스의 go·startAt·goBack을 쓴다(검사에서는 가짜 window를 넣는다).
- * @param {Window|null|undefined} win history·addEventListener를 가진 객체
- * @param {{onFallbackHome?: () => void}} options
+ * @param {Window|undefined} win history·addEventListener를 가진 객체
+ * @param {{now?: () => number, onExitHint?: () => void, onFallbackHome?: () => void}} options
  */
-export function createNavigator(win, { onFallbackHome = goHome } = {}) {
+export function createNavigator(win, { now = () => Date.now(), onExitHint = () => {}, onFallbackHome = goHome } = {}) {
   const stack = [];   // 이전 화면들 [{ renderFn, container, params }]
   let current = null; // 지금 화면
   let usingHistory = false; // 브라우저 기록을 쓸 수 있는지(막힌 환경이면 앱 안 기록만 쓴다)
+  let lastRootBack = 0;
   let listening = false;
 
   const browserHistory = () => { try { return win?.history ?? null; } catch { return null; } };
+  const push = (state) => { try { browserHistory().pushState(state, ''); return true; } catch { return false; } };
 
   function show(entry) {
     current = entry;
     return entry.renderFn(entry.container, entry.params);
   }
 
-  /** 브라우저 뒤로가기(popstate) 처리. 지금보다 앞의 깊이로 돌아왔으면 그 화면을 다시 그린다. @returns {'back'|undefined} */
+  /** 브라우저 뒤로가기(popstate) 처리. @returns {'back'|'hint'|'exit'|undefined} */
   function onPop(state) {
     if (!state || typeof state !== 'object' || !('eodiga3' in state)) return undefined; // 우리 기록이 아님(#d= 붙여넣기 등)
+    if (state.root) { // 첫 화면에서 한 번 더 뒤로 → 나가기 확인
+      if (lastRootBack && now() - lastRootBack < EXIT_WINDOW_MS) {
+        lastRootBack = 0;
+        try { browserHistory().back(); } catch { /* 나갈 곳이 없으면 그대로 */ }
+        return 'exit';
+      }
+      lastRootBack = now();
+      push({ eodiga3: 0 });
+      onExitHint();
+      return 'hint';
+    }
     const target = state.eodiga3;
     if (!(target < stack.length)) return undefined; // 앞으로 가기는 무시
     let entry = current;
@@ -55,12 +67,13 @@ export function createNavigator(win, { onFallbackHome = goHome } = {}) {
     return 'back';
   }
 
-  /** 앱을 열 때 첫 화면을 그린다. 앱 안 기록을 비우고 지금 브라우저 기록을 깊이 0으로 표시한다. */
+  /** 앱을 열 때 첫 화면을 그린다. 기록을 비우고 '나가기 확인' 자리를 하나 만든다. */
   function startAt(renderFn, container, params = {}) {
     stack.length = 0;
+    lastRootBack = 0;
     try {
-      browserHistory().replaceState({ eodiga3: 0 }, '');
-      usingHistory = true;
+      browserHistory().replaceState({ eodiga3: 0, root: true }, '');
+      usingHistory = push({ eodiga3: 0 });
     } catch {
       usingHistory = false;
     }
@@ -78,25 +91,25 @@ export function createNavigator(win, { onFallbackHome = goHome } = {}) {
   function go(renderFn, container, params = {}, { back } = {}) {
     if (current) stack.push(back ? { ...current, params: back } : current);
     current = { renderFn, container, params };
-    if (usingHistory) {
-      try { browserHistory().pushState({ eodiga3: stack.length }, ''); } catch { usingHistory = false; }
-    }
+    if (usingHistory) push({ eodiga3: stack.length });
     return renderFn(container, params);
   }
 
-  /** [뒤로] 버튼. 돌아갈 화면이 있으면 휴대폰 뒤로가기와 같은 길로, 없으면 앱 첫 화면으로. */
+  /** [뒤로] 버튼. 브라우저 기록이 있으면 휴대폰 뒤로가기와 같은 길로, 없으면 앱 안 기록으로. */
   function goBack() {
-    if (!stack.length) return onFallbackHome();
     if (usingHistory) {
       try { browserHistory().back(); return; } catch { usingHistory = false; }
     }
-    show(stack.pop());
+    if (stack.length) show(stack.pop());
+    else onFallbackHome();
   }
 
   return { startAt, go, goBack, onPop, depth: () => stack.length };
 }
 
-export const { startAt, go, goBack } = createNavigator(globalThis.window);
+let activeToast = () => {};
+const appNav = createNavigator(globalThis.window, { onExitHint: () => activeToast(t('nav.exitHint')) });
+export const { startAt, go, goBack } = appNav;
 
 function header(showNav) {
   const back = el('button', {
@@ -132,5 +145,6 @@ export function createShell(container, { nav = true } = {}) {
     clearTimeout(timer);
     timer = setTimeout(() => toastNode.classList.remove('show'), 1800);
   };
+  activeToast = toast; // 뒤로가기 '한 번 더 누르면 종료돼요' 안내는 지금 화면의 토스트로
   return { screen, foot, toast };
 }
