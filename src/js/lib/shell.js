@@ -21,20 +21,22 @@ function goHome() {
 // ---------- 화면 이동 기록 (#44) ----------
 // 화면을 바꿀 때 go()로 '이전 화면 + 그때 입력값'을 앱 안 기록에 쌓고 브라우저 기록도 하나 남긴다.
 // [뒤로] 버튼과 휴대폰 뒤로가기는 둘 다 브라우저 뒤로가기(popstate)로 처리해 바로 이전 화면을 그때 입력값으로 다시 그린다.
-// 첫 화면에서 뒤로가기: 1번이면 '한 번 더 누르면 종료돼요', 2초 안에 2번이면 앱 밖으로 나간다.
-// 브라우저 기록 항목의 state: { eodiga3: 깊이 } (root: true 는 첫 화면 바깥 = 나가기 확인용 자리)
-export const EXIT_WINDOW_MS = 2000;
+// 첫 화면에서 뒤로가기: 1번이면 '한 번 더 누르면 종료돼요', 이어서 1번 더 누르면 앱 밖으로 나간다.
+//   휴대폰 Chrome은 사용자가 화면을 누르기 전에 페이지가 스스로 만든 기록을 뒤로가기 때 건너뛴다.
+//   그래서 '나가기 확인' 자리는 앱을 열 때가 아니라 첫 화면에서 처음 누르거나 키를 칠 때 만든다(guard).
+//   안내를 띄운 뒤에는 자리를 다시 만들지 않아 다음 뒤로가기는 그대로 나간다. 그 사이 화면을 다시 누르면 자리를 다시 만든다.
+// 브라우저 기록 항목의 state: { eodiga3: 깊이 } (root: true 는 앱을 연 자리 = 첫 화면 바깥)
 
 /**
  * 화면 이동 기록을 만든다. 화면 코드는 아래 기본 인스턴스의 go·startAt·goBack을 쓴다(검사에서는 가짜 window를 넣는다).
- * @param {Window|undefined} win history·addEventListener를 가진 객체
- * @param {{now?: () => number, onExitHint?: () => void, onFallbackHome?: () => void}} options
+ * @param {Window|null|undefined} win history·addEventListener를 가진 객체
+ * @param {{onExitHint?: () => void, onFallbackHome?: () => void}} options
  */
-export function createNavigator(win, { now = () => Date.now(), onExitHint = () => {}, onFallbackHome = goHome } = {}) {
+export function createNavigator(win, { onExitHint = () => {}, onFallbackHome = goHome } = {}) {
   const stack = [];   // 이전 화면들 [{ renderFn, container, params }]
   let current = null; // 지금 화면
   let usingHistory = false; // 브라우저 기록을 쓸 수 있는지(막힌 환경이면 앱 안 기록만 쓴다)
-  let lastRootBack = 0;
+  let guarded = false;      // 첫 화면 위에 '나가기 확인' 자리가 있는지
   let listening = false;
 
   const browserHistory = () => { try { return win?.history ?? null; } catch { return null; } };
@@ -45,17 +47,17 @@ export function createNavigator(win, { now = () => Date.now(), onExitHint = () =
     return entry.renderFn(entry.container, entry.params);
   }
 
-  /** 브라우저 뒤로가기(popstate) 처리. @returns {'back'|'hint'|'exit'|undefined} */
+  /** 첫 화면에서 사용자가 누르거나 키를 쳤을 때: '나가기 확인' 자리를 만든다(사용자 동작 직후라 휴대폰이 건너뛰지 않음). */
+  function onUserActivation() {
+    if (!usingHistory || guarded || stack.length) return;
+    guarded = push({ eodiga3: 0 });
+  }
+
+  /** 브라우저 뒤로가기(popstate) 처리. @returns {'back'|'hint'|undefined} */
   function onPop(state) {
     if (!state || typeof state !== 'object' || !('eodiga3' in state)) return undefined; // 우리 기록이 아님(#d= 붙여넣기 등)
-    if (state.root) { // 첫 화면에서 한 번 더 뒤로 → 나가기 확인
-      if (lastRootBack && now() - lastRootBack < EXIT_WINDOW_MS) {
-        lastRootBack = 0;
-        try { browserHistory().back(); } catch { /* 나갈 곳이 없으면 그대로 */ }
-        return 'exit';
-      }
-      lastRootBack = now();
-      push({ eodiga3: 0 });
+    if (state.root) { // 첫 화면에서 뒤로 → 안내. 자리는 다시 만들지 않아 한 번 더 누르면 나간다
+      guarded = false;
       onExitHint();
       return 'hint';
     }
@@ -67,18 +69,21 @@ export function createNavigator(win, { now = () => Date.now(), onExitHint = () =
     return 'back';
   }
 
-  /** 앱을 열 때 첫 화면을 그린다. 기록을 비우고 '나가기 확인' 자리를 하나 만든다. */
+  /** 앱을 열 때 첫 화면을 그린다. 앱 안 기록을 비우고 지금 브라우저 기록을 '앱을 연 자리'로 표시한다. */
   function startAt(renderFn, container, params = {}) {
     stack.length = 0;
-    lastRootBack = 0;
+    guarded = false;
     try {
       browserHistory().replaceState({ eodiga3: 0, root: true }, '');
-      usingHistory = push({ eodiga3: 0 });
+      usingHistory = true;
     } catch {
       usingHistory = false;
     }
     if (usingHistory && !listening) {
       win.addEventListener('popstate', (event) => onPop(event.state));
+      // 누르는 순간(pointerdown)이 click보다 먼저라, 첫 화면의 버튼을 누르면 자리가 먼저 생기고 그다음 화면 이동 기록이 쌓인다
+      win.addEventListener('pointerdown', onUserActivation, true);
+      win.addEventListener('keydown', onUserActivation, true);
       listening = true;
     }
     return show({ renderFn, container, params });
@@ -89,6 +94,7 @@ export function createNavigator(win, { now = () => Date.now(), onExitHint = () =
    * @param {{back?: object}} options back: 지금 화면으로 돌아올 때 쓸 입력값(지금 화면의 params 대신). 예: 입력한 참여자 목록
    */
   function go(renderFn, container, params = {}, { back } = {}) {
+    onUserActivation(); // 혹시 자리가 아직 없으면 첫 화면 위에 먼저 만든다
     if (current) stack.push(back ? { ...current, params: back } : current);
     current = { renderFn, container, params };
     if (usingHistory) push({ eodiga3: stack.length });
@@ -104,7 +110,7 @@ export function createNavigator(win, { now = () => Date.now(), onExitHint = () =
     else onFallbackHome();
   }
 
-  return { startAt, go, goBack, onPop, depth: () => stack.length };
+  return { startAt, go, goBack, onPop, onUserActivation, depth: () => stack.length };
 }
 
 let activeToast = () => {};
