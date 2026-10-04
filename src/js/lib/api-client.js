@@ -76,7 +76,25 @@ export async function deleteParticipant(roomId, participantId, hostToken) {
   throw new Error('아직 구현되지 않았습니다');
 }
 
-/** FUNC-012 모임 확정 정보를 방에 저장 (총무만). */
+/**
+ * FUNC-012 모임 확정 정보를 방에 저장 (총무만).
+ * @param {string} roomId
+ * @param {MeetingConfirmation} confirmation share_url은 보내지 않는다(서버가 형식 검사 후 버림)
+ * @param {string} hostToken
+ * @returns {Promise<{confirmation}|{error:string}>}
+ *   실패하면 { error }: 'not_found' | 'forbidden' | 'invalid' | 'unavailable'
+ */
 export async function confirmRoom(roomId, confirmation, hostToken) {
-  throw new Error('아직 구현되지 않았습니다');
+  try {
+    const res = await fetch('/api/room-confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ room_id: roomId, host_token: hostToken, confirmation }),
+    });
+    const data = await res.json().catch(() => null);
+    if (res.ok && data?.confirmation) return { confirmation: data.confirmation };
+    return { error: data?.error ?? 'unavailable' };
+  } catch {
+    return { error: 'unavailable' };
+  }
 }

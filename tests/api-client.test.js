@@ -1,6 +1,6 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { saveParticipant, createRoom, getStatus } from '../src/js/lib/api-client.js';
+import { saveParticipant, createRoom, getStatus, confirmRoom } from '../src/js/lib/api-client.js';
 
 const realFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = realFetch; });
@@ -60,6 +60,26 @@ test('NFR-011: 서버가 없거나 응답이 이상해도 화면이 멈추지 �
     fakeFetch(respond);
     assert.deepEqual(await saveParticipant('room1234567', participant), { error: 'unavailable' });
   }
+});
+
+test('FUNC-012: confirmRoom은 room_id·host_token·confirmation을 POST하고, 성공하면 { confirmation }', async () => {
+  const confirmation = { v: 1, p: '회식' };
+  const calls = fakeFetch(() => json(200, { confirmation }));
+  assert.deepEqual(await confirmRoom('room1234567', confirmation, 'host-token'), { confirmation });
+  assert.equal(calls[0].url, '/api/room-confirm');
+  assert.equal(calls[0].options.method, 'POST');
+  assert.deepEqual(calls[0].body, { room_id: 'room1234567', host_token: 'host-token', confirmation });
+});
+
+test('FUNC-012: confirmRoom이 실패해도 예외 없이 { error }', async () => {
+  for (const [status, error] of [[403, 'forbidden'], [404, 'not_found'], [400, 'invalid'], [503, 'unavailable']]) {
+    fakeFetch(() => json(status, { error }));
+    assert.deepEqual(await confirmRoom('room1234567', {}, 't'), { error });
+  }
+  fakeFetch(() => { throw new TypeError('Failed to fetch'); });
+  assert.deepEqual(await confirmRoom('room1234567', {}, 't'), { error: 'unavailable' });
+  fakeFetch(() => new Response('<html>Not Found</html>', { status: 404 }));
+  assert.deepEqual(await confirmRoom('room1234567', {}, 't'), { error: 'unavailable' });
 });
 
 const meeting = { purpose: '회식', arrival_time: '2026-10-10T10:00:00.000Z' };

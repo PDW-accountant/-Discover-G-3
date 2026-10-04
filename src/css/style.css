@@ -195,6 +195,19 @@ input.p-name{display:block;}
 .crew .avatar:nth-child(even){transform:translateY(-8px) rotate(4deg);}
 .crew .avatar:nth-child(odd){transform:rotate(-4deg);}
 
+/* 약속 확정 (FUNC-012) — 프로토타입 .done-wrap·.done-msg·.done-sub·.ticket* 그대로. .crew는 위 '입력 완료'를 함께 씀 */
+.done-wrap{flex:1;display:flex;flex-direction:column;justify-content:center;}
+.done-msg{font-family:var(--serif);font-weight:700;font-size:36px;line-height:1.2;margin:0 0 10px;}
+.done-sub{font-size:14px;color:var(--muted);margin:0 0 26px;display:flex;align-items:center;gap:6px;}
+.ticket{border:1px solid var(--hair);border-radius:24px;overflow:hidden;background:var(--card);box-shadow:0 20px 40px -28px rgba(80,50,30,.45);}
+.ticket-top{padding:20px 20px 18px;border-bottom:1px dashed #D8CEC3;position:relative;}
+.ticket-top .st{font-family:var(--serif);font-weight:700;font-size:32px;margin-top:8px;}
+.ticket-top .pl{font-weight:500;font-size:16px;margin-top:2px;color:var(--muted);}
+.ticket-top .pl a{color:inherit;text-underline-offset:3px;}
+.ticket-bot{padding:16px 20px 20px;display:grid;grid-template-columns:auto 1fr;gap:8px 16px;font-size:14px;margin:0;}
+.ticket-bot dt{color:var(--muted);}
+.ticket-bot dd{margin:0;font-weight:700;}
+
 /* 안내 토스트 */
 .toast{
   position:absolute;left:50%;bottom:110px;transform:translate(-50%,20px);opacity:0;pointer-events:none;
