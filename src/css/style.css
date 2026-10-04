@@ -161,6 +161,9 @@ input.p-name{display:block;}
 .person.open .p-st{border-color:var(--accent);border-bottom-left-radius:0;border-bottom-right-radius:0;}
 .person.other .p-name,.person.other .p-st{color:var(--muted);}
 .person.other .p-name,.person.other .p-st .lbl{font-weight:500;}
+.person.missing .p-st{border-color:var(--accent);border-style:dashed;}
+.person.missing .p-st .lbl.empty{color:var(--accent-ink);}
+input.p-name.invalid{border-color:#cf222e;}
 .picker{
   margin-left:calc(60px + (100% - 60px) / 2.3);
   border:1px solid var(--accent);border-top:0;border-radius:0 0 14px 14px;overflow:hidden;background:var(--card);
