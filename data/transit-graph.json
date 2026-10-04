@@ -61,10 +61,10 @@
     "counts": {
       "stations": 655,
       "seoul": 308,
-      "routes": 32,
-      "ride": 1996,
-      "estimated": 1366,
-      "transfer": 628,
+      "routes": 33,
+      "ride": 2002,
+      "estimated": 1372,
+      "transfer": 630,
       "swap": 302
     }
   },
@@ -86,6 +86,7 @@
     {"id":"9","line":"9","name":"9호선","express":false},
     {"id":"9-express","line":"9","name":"9호선 급행","express":true},
     {"id":"경의중앙-seoul","line":"경의중앙","name":"경의중앙선 서울역 지선","express":false},
+    {"id":"경의중앙-imjingang","line":"경의중앙","name":"경의중앙선 임진강 셔틀","express":false},
     {"id":"경의중앙","line":"경의중앙","name":"경의중앙선","express":false},
     {"id":"수인분당","line":"수인분당","name":"수인분당선","express":false},
     {"id":"경춘","line":"경춘","name":"경춘선","express":false},
@@ -1310,6 +1311,12 @@
     {"from":"S1283:경의중앙","to":"S1282:경의중앙","minutes":2.5,"type":"ride","estimated":true},
     {"from":"S1283:경의중앙","to":"S1284:경의중앙","minutes":3.5,"type":"ride","estimated":true},
     {"from":"S1284:경의중앙","to":"S1283:경의중앙","minutes":3.5,"type":"ride","estimated":true},
+    {"from":"S1284:경의중앙","to":"S1284:경의중앙-imjingang","minutes":2,"type":"transfer","assumed":true},
+    {"from":"S1284:경의중앙-imjingang","to":"S1284:경의중앙","minutes":2,"type":"transfer","assumed":true},
+    {"from":"S1284:경의중앙-imjingang","to":"S1286:경의중앙-imjingang","minutes":6,"type":"ride","estimated":true},
+    {"from":"S1285:경의중앙-imjingang","to":"S1286:경의중앙-imjingang","minutes":4,"type":"ride","estimated":true},
+    {"from":"S1286:경의중앙-imjingang","to":"S1284:경의중앙-imjingang","minutes":6,"type":"ride","estimated":true},
+    {"from":"S1286:경의중앙-imjingang","to":"S1285:경의중앙-imjingang","minutes":4,"type":"ride","estimated":true},
     {"from":"S1311:6","to":"S1311:경춘","minutes":0.7,"type":"transfer"},
     {"from":"S1311:6","to":"S2648:6","minutes":4.5,"type":"ride"},
     {"from":"S1311:경춘","to":"S1203:경춘","minutes":2.5,"type":"ride","estimated":true},
@@ -1914,6 +1921,7 @@
     {"from":"S1863:수인분당","to":"S1864:수인분당","minutes":2,"type":"ride","estimated":true},
     {"from":"S1863:GTX-A","to":"S1512:GTX-A","minutes":6.5,"type":"ride","estimated":true},
     {"from":"S1863:GTX-A","to":"S1863:수인분당","minutes":2,"type":"transfer","assumed":true},
+    {"from":"S1863:GTX-A","to":"S9010:GTX-A","minutes":7,"type":"ride","estimated":true},
     {"from":"S1864:수인분당","to":"S1863:수인분당","minutes":2,"type":"ride","estimated":true},
     {"from":"S1864:수인분당","to":"S1865:수인분당","minutes":2,"type":"ride","estimated":true},
     {"from":"S1865:수인분당","to":"S1864:수인분당","minutes":2,"type":"ride","estimated":true},
@@ -3028,6 +3036,7 @@
     {"from":"S4928:김포골드","to":"S4927:김포골드","minutes":3.78,"type":"ride","estimated":true},
     {"from":"S9000:GTX-A","to":"S9001:GTX-A","minutes":6,"type":"ride","estimated":true},
     {"from":"S9001:GTX-A","to":"S1953:GTX-A","minutes":5.5,"type":"ride","estimated":true},
-    {"from":"S9001:GTX-A","to":"S9000:GTX-A","minutes":6,"type":"ride","estimated":true}
+    {"from":"S9001:GTX-A","to":"S9000:GTX-A","minutes":6,"type":"ride","estimated":true},
+    {"from":"S9010:GTX-A","to":"S1863:GTX-A","minutes":7,"type":"ride","estimated":true}
   ]
 }

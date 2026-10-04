@@ -8,7 +8,7 @@
 import { loadData, t } from '../lib/data.js';
 import { getRoom, saveParticipant } from '../lib/api-client.js';
 import { getParticipantId } from '../lib/storage.js';
-import { lineBadge, searchStations } from '../lib/stations.js';
+import { lineBadge, rareServiceNotices, searchStations } from '../lib/stations.js';
 import { createShell, el } from '../lib/shell.js';
 import { characterNode } from '../lib/characters.js';
 import { MAX_PARTICIPANTS, NICKNAME_MAX_LENGTH } from '../config.js';
@@ -194,6 +194,8 @@ export async function render(container, params = {}) {
         }),
       ]),
       el('p', { className: 'hint', textContent: t('join.nicknameHint', { max: NICKNAME_MAX_LENGTH }) }),
+      ...rareServiceNotices([...others, ...rows].map((p) => stationById(p.origin_station_id)))
+        .map((text) => el('p', { className: 'notice', textContent: text })),
       el('p', { className: 'error', role: 'alert', textContent: message }),
     );
     foot.replaceChildren(el('button', { type: 'button', className: 'btn', textContent: t('join.save'), onclick: save }));

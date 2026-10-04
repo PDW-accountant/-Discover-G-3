@@ -15,7 +15,7 @@ import { travelTime } from '../lib/transit.js';
 import { departureAdvice } from '../lib/departure.js';
 import { placeLink } from '../lib/places.js';
 import { drawRoute } from '../lib/map.js';
-import { lineBadge } from '../lib/stations.js';
+import { lineBadge, rareServiceNotices } from '../lib/stations.js';
 import { getParticipantId } from '../lib/storage.js';
 import { createShell, el } from '../lib/shell.js';
 import { characterNode } from '../lib/characters.js';
@@ -208,7 +208,8 @@ function routeBody(info) {
     ]);
   }
 
-  return [mapBox, summary, ...[stepList, departRow, placeRow].filter(Boolean)];
+  const notices = rareServiceNotices([info.from, info.to]).map((text) => el('p', { className: 'notice', textContent: text }));
+  return [mapBox, summary, ...notices, ...[stepList, departRow, placeRow].filter(Boolean)];
 }
 
 function showMessage(container, text) {

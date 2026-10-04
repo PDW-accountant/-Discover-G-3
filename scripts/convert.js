@@ -1,6 +1,6 @@
 // 콘텐츠팀 시트 + 공공데이터 → data/*.json 변환 (개발 C) — FUNC-016 (#14)
 // 실행: node scripts/convert.js   검사 결과가 1건 이상이면 종료 코드 1 (파일은 그래도 만든다)
-// 입력: scripts/input/ (출처·받는 법은 scripts/input/README.md), 역 이름 보정·서울 경계: scripts/aliases.json
+// 입력: scripts/input/ (출처·받는 법은 scripts/input/README.md), 역 이름 보정·서울 경계·운행이 드문 역: scripts/aliases.json
 // 출력: data/stations.json, data/transit-graph.json, data/candidates.json, data/places.json, data/demo.json
 // JSON은 손으로 고치지 않고 항상 이 스크립트로 만든다.
 //
@@ -83,16 +83,20 @@ const OFFICIAL_ONLY_LINES = new Set(['2', '5', '6']);
 const SPLITS = {
   1: { at: '구로', branches: [{ id: '1-incheon', name: '1호선 인천 방면', first: '구일' }, { id: '1-cheonan', name: '1호선 천안 방면', first: '가산디지털단지' }] },
 };
-// 경의중앙선 서울역 지선 (서울역 - 신촌 - 가좌). 가좌에서 본선과 갈아탄다
+// 본선과 따로 다니는 지선·셔틀. 마지막 역에서 본선과 갈아탄다
+//   경의중앙선 서울역 지선 (서울역 - 신촌 - 가좌), 임진강 셔틀 (임진강 - 운천 - 문산, 하루 왕복 2회)
 const BRANCH_ROUTES = {
-  경의중앙: { id: '경의중앙-seoul', name: '경의중앙선 서울역 지선', stations: ['서울역', '신촌(경의중앙)', '가좌'] },
+  경의중앙: [
+    { id: '경의중앙-seoul', name: '경의중앙선 서울역 지선', stations: ['서울역', '신촌(경의중앙)', '가좌'] },
+    { id: '경의중앙-imjingang', name: '경의중앙선 임진강 셔틀', stations: ['임진강', '운천', '문산'] },
+  ],
 };
 // 급행을 따로 두는 노선 (서울 열차 시간표의 급행 구분이 있는 노선)
 const EXPRESS_LINES = new Set(['1', '9']);
 // 환승이 꼭 있어야 하는 같은 노선 계통 쌍 (지선이 갈라지는 역)
 const BRANCH_TRANSFERS = [
   ['성수', '2-main', '2-seongsu'], ['신도림', '2-main', '2-sinjeong'], ['강동', '5-hanam', '5-macheon'],
-  ['구로', '1-incheon', '1-cheonan'], ['가좌', '경의중앙', '경의중앙-seoul'],
+  ['구로', '1-incheon', '1-cheonan'], ['가좌', '경의중앙', '경의중앙-seoul'], ['문산', '경의중앙', '경의중앙-imjingang'],
 ];
 // 공식 환승 자료가 없는 서울 안 환승의 가정값 (도보 분). 이유를 함께 적는다
 const ASSUMED_TRANSFERS = [
@@ -433,14 +437,14 @@ function buildRoutes(localEdges, expressEdges, index, issues) {
         routes.push({ id: b.id, line, name: b.name, express: false });
       });
     } else {
-      const branch = BRANCH_ROUTES[line];
-      if (branch) {
+      const only = new Set(); // 지선에만 있는 역 (지선의 마지막 역은 갈아타는 역이라 본선에도 둔다)
+      for (const branch of BRANCH_ROUTES[line] ?? []) {
         const ids = branch.stations.map((n) => idOf(n, line));
         members.set(branch.id, new Set(ids));
         routes.push({ id: branch.id, line, name: branch.name, express: false });
-        const only = new Set(ids.slice(0, -1)); // 지선에만 있는 역 (마지막 역은 갈아타는 역)
-        members.set(line, new Set([...all].filter((id) => !only.has(id))));
-      } else members.set(line, all);
+        for (const id of ids.slice(0, -1)) only.add(id);
+      }
+      members.set(line, new Set([...all].filter((id) => !only.has(id))));
       routes.push({ id: line, line, name: lineName(line), express: false });
     }
     for (const [routeId, set] of members) {
@@ -716,8 +720,14 @@ export function convert() {
   // 역 목록: 운행 노선은 그래프에서, 그래프에 없는 역은 역사마스터의 노선
   const linesAt = {};
   for (const r of rides) for (const id of [r.from, r.to]) (linesAt[id] ??= new Set()).add(routeLine[r.route]);
+  // 열차가 하루 몇 번만 다니는 역은 trains_per_day 를 적는다 (화면이 실제 운행 시각을 확인하라고 경고한다)
+  const rare = Object.fromEntries((aliases.rareService ?? []).map((r) => [canonicalName(r.name, [], aliases), r.trainsPerDay]));
+  for (const name of Object.keys(rare)) if (!stations.some((s) => s.name === name)) issues.push(`운행이 드문 역 이름을 찾지 못함(aliases.json rareService): ${name}`);
   const stationList = stations
-    .map((s) => ({ id: s.id, name: s.name, lines: sortLines(linesAt[s.id] ?? s.coarse), lat: s.lat, lng: s.lng, seoul: s.seoul }))
+    .map((s) => ({
+      id: s.id, name: s.name, lines: sortLines(linesAt[s.id] ?? s.coarse), lat: s.lat, lng: s.lng, seoul: s.seoul,
+      ...(rare[s.name] ? { trains_per_day: rare[s.name] } : {}),
+    }))
     .sort((a, b) => a.name.localeCompare(b.name, 'ko') || a.id.localeCompare(b.id));
 
   // 콘텐츠팀 시트
