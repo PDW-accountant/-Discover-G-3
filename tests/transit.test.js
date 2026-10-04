@@ -31,7 +31,8 @@ const fake = {
     ...both('E:r3', 'G:r3', 1, 'ride'),
   ],
 };
-const step = (line, express, from, to, minutes, change) => ({ line, express, from, to, minutes, ...(change ? { change } : {}) });
+// via: 그 구간에서 열차가 서는 역(승차역~하차역, 지도 경로선용 #16). 한 정거장이면 [승차역, 하차역]
+const step = (line, express, from, to, minutes, change, via = [from, to]) => ({ line, express, from, to, minutes, via, ...(change ? { change } : {}) });
 
 test('FUNC-006: 환승하면 도보시간 + 대기, 환승 횟수 1, 구간이 호선별로 나뉜다', () => {
   // 3(A→B) + 1+3(환승) + 4(B→D) + 처음 대기 3 = 14 (중간에 서는 역이 없어 정차 시간 없음)
@@ -88,7 +89,7 @@ test('#25: 정차 시간은 config.js의 DWELL_MINUTES (30초)', () => {
 
 test('#25: 열차가 중간에 서는 역마다 정차 시간이 붙고, 타는 역·내리는 역에는 붙지 않는다', () => {
   // B → K: 일반 B─3─C─2─K, 중간에 서는 역 C 1곳 → 5 + 0.5 + 처음 대기 3 = 8.5 → 9분 (정차 없으면 8분)
-  assert.deepEqual(travelTime(fake, S.B, S.K), { minutes: 9, transfers: 0, is_estimated: false, steps: [step('1', false, 'B', 'K', 6)] });
+  assert.deepEqual(travelTime(fake, S.B, S.K), { minutes: 9, transfers: 0, is_estimated: false, steps: [step('1', false, 'B', 'K', 6, undefined, ['B', 'C', 'K'])] }); // 중간에 C를 지난다
   // A → B: 한 정거장이면 중간 역이 없어 그대로 3 + 3 = 6분
   assert.equal(travelTime(fake, S.A, S.B).minutes, 6);
 });
@@ -156,4 +157,14 @@ test('FUNC-006: 같은 입력은 항상 같은 결과다', () => {
   const participants = [{ participant_id: 'a', origin_station_id: byName('홍대입구').id }, { participant_id: 'b', origin_station_id: byName('수원').id }];
   const candidates = ['강남', '서울', '판교', '노량진'].map(byName);
   assert.deepEqual(travelTimes(graph, participants, candidates, stationsById), travelTimes(graph, participants, candidates, stationsById));
+});
+
+test('#16: 구간마다 열차가 서는 역 목록(via)을 돌려준다 — 급행은 건너뛰는 역이 없다', () => {
+  const r = trip('김포공항', '고속터미널'); // 9호선 급행
+  const names = r.steps[0].via.map((id) => stationsById[id].name);
+  assert.equal(names[0], '김포공항');
+  assert.equal(names[names.length - 1], '고속터미널');
+  assert.ok(!names.includes('공항시장'), '급행은 공항시장에 서지 않는다');
+  const local = trip('홍대입구', '잠실').steps[0].via;
+  assert.ok(local.length > 10, `2호선 홍대입구→잠실은 서는 역이 많다 (${local.length})`);
 });

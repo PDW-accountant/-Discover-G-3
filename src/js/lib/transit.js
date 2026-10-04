@@ -121,10 +121,11 @@ function routeTo(g, tree, toId) {
     if (type === 'ride') {
       if (current) {
         current.to = g.station[v];
+        current.via.push(g.station[v]);
         current.minutes += cost;
       } else {
         const r = g.routes.get(g.route[u]);
-        current = { line: r?.line ?? g.route[u], express: Boolean(r?.express), from: g.station[u], to: g.station[v], minutes: cost };
+        current = { line: r?.line ?? g.route[u], express: Boolean(r?.express), from: g.station[u], to: g.station[v], minutes: cost, via: [g.station[u], g.station[v]] };
         if (pending) current.change = pending;
         pending = null;
         steps.push(current);
@@ -165,8 +166,9 @@ function calculatorFrom(graph, from) {
  * @param {object|null} graph data/transit-graph.json
  * @param {Station} fromStation
  * @param {Station} toStation
- * @returns {{minutes:number, transfers:number, steps:Array<{line, express, from, to, minutes, change?}>, is_estimated:boolean}}
+ * @returns {{minutes:number, transfers:number, steps:Array<{line, express, from, to, minutes, via, change?}>, is_estimated:boolean}}
  *   transfers 는 급행↔일반 갈아타기(swap)를 세지 않는다. steps 의 from·to 는 역 id, line 은 호선('1', '9', '경의중앙' 등).
+ *   steps[i].via 는 그 구간에서 열차가 서는 역 id 목록(승차역~하차역, 지도 경로선용 #16).
  *   steps[i].minutes 는 중간 정차 포함. 두 번째 구간부터 change = { type: 'transfer'|'swap', walk: 도보 분, wait: 대기 분 }(그 구간을 타기 전 갈아타기)
  */
 export function travelTime(graph, fromStation, toStation) {

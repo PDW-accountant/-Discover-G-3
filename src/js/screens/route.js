@@ -86,6 +86,7 @@ export function buildRouteInfo(confirmation, nickname, {
     ? (route.steps ?? []).map((s) => ({
       line: s.line, train: trainKind(s, expressLines),
       from: resolveStation(s.from, stationsById), to: resolveStation(s.to, stationsById), minutes: s.minutes,
+      via: (s.via ?? []).map((id) => resolveStation(id, stationsById)), // 지도 경로선이 지나는 역(#16)
     }))
     : [];
 

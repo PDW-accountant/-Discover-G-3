@@ -31,6 +31,7 @@ export function resolveSteps(steps, stationsById, expressLines) {
   const station = (id) => stationsById[id] ?? { id: String(id ?? ''), name: String(id ?? ''), lines: [] };
   return (steps ?? []).map((s) => ({
     line: s.line, train: trainKind(s, expressLines), from: station(s.from), to: station(s.to), minutes: s.minutes,
+    via: (s.via ?? []).map(station), // 지도 경로선이 지나는 역(#16)
     ...(s.change ? { change: s.change } : {}),
   }));
 }

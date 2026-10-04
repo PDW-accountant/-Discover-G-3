@@ -192,5 +192,6 @@
   "route.noConfirmation": "아직 확정된 약속 정보가 없어요",
   "route.mapFrom": "출발",
   "route.mapTo": "도착",
+  "route.mapTransfer": "{name} 환승",
   "route.mapLabel": "{from}역에서 {to}역까지 경로"
 }
