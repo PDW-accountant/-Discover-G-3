@@ -42,6 +42,12 @@ function linkFor(place, stationName) {
   }
 }
 
+/** 급행이 다니는 노선(그래프 routes에 급행 계통이 있는 호선)이면 구간에 'express'/'local'. 급행이 없는 노선은 null(표시 안 함). */
+function trainKind(step, expressLines) {
+  if (step.express) return 'express';
+  return expressLines.has(step.line) ? 'local' : null;
+}
+
 /** 카카오맵에서 만남 역까지 길찾기(지도를 그리지 못했을 때). 좌표가 없으면 역 이름 검색. */
 export function kakaoMapLink(to) {
   if (Number.isFinite(to?.lat) && Number.isFinite(to?.lng)) {
@@ -57,7 +63,7 @@ export function kakaoMapLink(to) {
  * @param {{stationsById, graph, places, now, travel, advise, link}} options
  * @returns {null | {
  *   nickname, from: Station, to: Station, same_station: boolean,
- *   minutes: number, transfers: number|null, steps: Array<{line, from: Station, to: Station, minutes}>,
+ *   minutes: number, transfers: number|null, steps: Array<{line, train: 'express'|'local'|null, from: Station, to: Station, minutes}>,
  *   is_estimated: boolean, departure: {depart_at: Date, summary: string, is_past: boolean}|null,
  *   place: {name, url}|null
  * }} 명단에 없는 닉네임이면 null
@@ -82,9 +88,11 @@ export function buildRouteInfo(confirmation, nickname, {
   }
   const computed = !sameStation && Number.isFinite(route?.minutes) && !route.is_estimated;
   const minutes = sameStation ? 0 : (computed ? route.minutes : person.m);
+  const expressLines = new Set((graph?.routes ?? []).filter((r) => r.express).map((r) => r.line));
   const steps = computed
     ? (route.steps ?? []).map((s) => ({
-      line: s.line, from: resolveStation(s.from, stationsById), to: resolveStation(s.to, stationsById), minutes: s.minutes,
+      line: s.line, train: trainKind(s, expressLines),
+      from: resolveStation(s.from, stationsById), to: resolveStation(s.to, stationsById), minutes: s.minutes,
     }))
     : [];
 
@@ -135,6 +143,11 @@ function badgeNode(line) {
   });
 }
 
+/** 호선 동그라미 옆 '급행'/'일반' 꼬리표. 급행이 없는 노선이면 없음. */
+function trainNodes(train) {
+  return train ? [el('span', { className: `train ${train}`, textContent: t(`route.${train}`) })] : [];
+}
+
 function stationLabel(station) {
   return t('confirm.station', { name: station.name });
 }
@@ -171,7 +184,7 @@ function routeBody(info) {
   const meta = [t('route.total', { minutes: info.minutes })];
   if (info.transfers !== null) meta.push(info.transfers ? t('route.transfers', { count: info.transfers }) : t('route.noTransfer'));
   const summary = el('div', { className: 'route' }, [
-    stationLabel(info.from), ...(info.steps[0] ? [badgeNode(info.steps[0].line)] : []), arrow, stationLabel(info.to),
+    stationLabel(info.from), ...(info.steps[0] ? [badgeNode(info.steps[0].line), ...trainNodes(info.steps[0].train)] : []), arrow, stationLabel(info.to),
     el('span', { className: 'meta', textContent: meta.join(' · ') }),
     ...(info.is_estimated ? [el('span', { className: 'est', textContent: t('route.estimated') })] : []),
   ]);
@@ -179,6 +192,7 @@ function routeBody(info) {
   const stepList = info.steps.length
     ? el('ol', { className: 'steps' }, info.steps.map((s) => el('li', {}, [
       badgeNode(s.line),
+      ...trainNodes(s.train),
       el('span', { className: 'seg', textContent: t('route.step', { from: s.from.name, to: s.to.name }) }),
       el('span', { className: 'min', textContent: t('route.minutes', { minutes: s.minutes }) }),
     ])))
