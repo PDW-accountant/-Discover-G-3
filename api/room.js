@@ -2,8 +2,9 @@
 // POST: 무작위 10자 이상 id + host_token 생성, room:{id}에 purpose·arrival_time·created_at·host_token_hash·status 저장, 30일 만료.
 // GET: 방 정보 + 참여자 목록. host_token_hash는 돌려주지 않는다. 없거나 만료면 404.
 
-import { createHash, randomBytes } from 'node:crypto';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { isRedisConfigured, redis } from './_lib/redis.js';
+import { hashToken } from './_lib/token.js';
 import { PURPOSES } from '../src/js/config.js';
 
 const ROOM_TTL_SECONDS = 30 * 24 * 60 * 60; // 30일 만료
@@ -24,10 +25,6 @@ function newRoomId() {
 
 function newHostToken() {
   return randomBytes(24).toString('base64url');
-}
-
-function hashToken(token) {
-  return createHash('sha256').update(token).digest('hex');
 }
 
 function isValidArrival(value) {
@@ -69,8 +66,82 @@ async function createRoom(req, res) {
   return res.status(503).json({ error: 'unavailable' });
 }
 
+function roomIdOf(req) {
+  const id = req.query?.id ?? new URL(req.url ?? '', 'http://localhost').searchParams.get('id');
+  return typeof id === 'string' && /^[A-Za-z0-9_-]{8,64}$/.test(id) ? id : null;
+}
+
+/** 총무 토큰은 주소가 아니라 헤더(x-host-token)로 받는다. 저장된 해시와 같을 때만 true. */
+function isHost(req, storedHash) {
+  const token = req.headers?.['x-host-token'];
+  if (typeof token !== 'string' || token.length < 8 || token.length > 256 || typeof storedHash !== 'string') return false;
+  const given = Buffer.from(hashToken(token));
+  const stored = Buffer.from(storedHash);
+  return given.length === stored.length && timingSafeEqual(given, stored);
+}
+
+/** HGETALL 결과(이름, 값, 이름, 값…)를 객체로. */
+function toFields(flat) {
+  const fields = {};
+  for (let i = 0; i + 1 < flat.length; i += 2) fields[flat[i]] = flat[i + 1];
+  return fields;
+}
+
+function parseJson(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+/** p:{id} 필드들을 RoomParticipant 목록으로. 입력한 순서(updated_at)대로, 같으면 id 순. */
+function toParticipants(fields) {
+  const list = [];
+  for (const [name, value] of Object.entries(fields)) {
+    if (!name.startsWith('p:')) continue;
+    const saved = parseJson(value);
+    if (!saved || typeof saved.nickname !== 'string' || typeof saved.station_id !== 'string') continue;
+    list.push({
+      participant_id: name.slice(2), nickname: saved.nickname,
+      origin_station_id: saved.station_id, updated_at: saved.updated_at ?? '',
+    });
+  }
+  return list.sort((a, b) => a.updated_at.localeCompare(b.updated_at) || a.participant_id.localeCompare(b.participant_id));
+}
+
+// GET /api/room?id= — 방 정보 + 참여자 목록. 총무 토큰 해시는 돌려주지 않고, 총무인지(is_host)만 알려준다.
+async function readRoom(req, res) {
+  const roomId = roomIdOf(req);
+  if (!roomId) return res.status(400).json({ error: 'invalid' });
+  if (!isRedisConfigured()) return res.status(503).json({ error: 'unavailable' });
+
+  let flat;
+  try {
+    flat = await redis(['HGETALL', `room:${roomId}`]);
+  } catch (e) {
+    console.error('방 읽기 실패', e);
+    return res.status(503).json({ error: 'unavailable' });
+  }
+  if (!Array.isArray(flat)) return res.status(503).json({ error: 'unavailable' });
+  if (flat.length === 0) return res.status(404).json({ error: 'not_found' }); // 없거나 만료
+
+  const fields = toFields(flat);
+  const confirmation = fields.confirmation ? parseJson(fields.confirmation) : null;
+  res.setHeader?.('Cache-Control', 'no-store'); // 5초마다 읽는 값이라 캐시하지 않는다
+  return res.status(200).json({
+    room_id: roomId,
+    purpose: fields.purpose,
+    arrival_time: fields.arrival_time,
+    status: fields.status ?? '입력중',
+    is_host: isHost(req, fields.host_token_hash),
+    participants: toParticipants(fields),
+    ...(confirmation ? { confirmation } : {}),
+  });
+}
+
 export default async function handler(req, res) {
   if (req.method === 'POST') return createRoom(req, res);
-  // GET(방 읽기)은 FUNC-014·023에서 구현한다.
+  if (req.method === 'GET') return readRoom(req, res);
   res.status(501).json({ error: '아직 구현되지 않았습니다' });
 }

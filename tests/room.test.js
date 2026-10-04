@@ -24,9 +24,9 @@ beforeEach(() => {
 });
 afterEach(() => { process.env = { ...savedEnv }; mock.restoreAll(); });
 
-test('POST 외 요청(GET은 FUNC-014에서 구현)은 501', async () => {
-  assert.equal((await call('GET')).status, 501);
+test('POST·GET 외 요청은 501', async () => {
   assert.equal((await call('DELETE', valid)).status, 501);
+  assert.equal((await call('PUT', valid)).status, 501);
 });
 
 test('FUNC-021: 목적이나 도착 시간이 올바르지 않으면 400 invalid', async () => {
@@ -59,7 +59,7 @@ test('NFR-011: 저장소 호출이 실패해도 예외 없이 503 unavailable', 
 });
 
 // redis()를 정해진 결과로 바꿔 끼워야 해서 별도 Node 프로세스에서 실행한다. results는 호출 순서대로 돌려줄 값.
-function runWithRedisResults(results, { body = valid, headers = { host: 'eodiga3.vercel.app' } } = {}) {
+function runWithRedisResults(results, { method = 'POST', body = valid, query, headers = { host: 'eodiga3.vercel.app' } } = {}) {
   const redisUrl = new URL('../api/_lib/redis.js', import.meta.url).href;
   const handlerUrl = new URL('../api/room.js', import.meta.url).href;
   const code = `
@@ -73,8 +73,10 @@ function runWithRedisResults(results, { body = valid, headers = { host: 'eodiga3
     console.error = () => {};
     const { default: handler } = await import(${JSON.stringify(handlerUrl)});
     const out = {};
-    await handler({ method: 'POST', body: ${JSON.stringify(body)}, headers: ${JSON.stringify(headers)} }, {
+    out.headers = {};
+    await handler({ method: ${JSON.stringify(method)}, body: ${JSON.stringify(body)}, query: ${JSON.stringify(query)}, headers: ${JSON.stringify(headers)} }, {
       status(c) { out.status = c; return this; }, json(b) { out.body = b; return this; },
+      setHeader(name, value) { out.headers[name] = value; },
     });
     out.commands = sent;
     console.log(JSON.stringify(out));
@@ -165,4 +167,103 @@ test('FUNC-021: 링크는 요청이 들어온 주소(미리보기·심사용)를
 test('FUNC-021: 이상한 host 헤더는 링크에 쓰지 않는다', () => {
   const out = runWithRedisResults(['ok'], { headers: { host: 'evil.com/<script>' } });
   assert.equal(out.body.join_url, `/?room=${out.body.room_id}`);
+});
+
+// ---- FUNC-023: GET /api/room (방 읽기) ----
+const ROOM_ID = 'room1234567';
+const HOST_TOKEN = 'host-token-12345';
+const hostHash = createHash('sha256').update(HOST_TOKEN).digest('hex');
+const stored = (extra = []) => [
+  'purpose', '회식', 'arrival_time', '2026-10-10T10:00:00.000Z', 'created_at', '2026-10-04T00:00:00.000Z',
+  'host_token_hash', hostHash, 'status', '입력중',
+  ...extra,
+];
+const person = (nickname, station, updatedAt) => JSON.stringify({ nickname, station_id: station, updated_at: updatedAt });
+const get = (results, options = {}) => runWithRedisResults(results, { method: 'GET', query: { id: ROOM_ID }, ...options });
+
+test('FUNC-023: 방 id가 없거나 형식이 틀리면 400 invalid', async () => {
+  for (const query of [undefined, {}, { id: '' }, { id: 'short' }, { id: 'room/../x123' }, { id: ['a', 'b'] }, { id: 'x'.repeat(65) }]) {
+    const out = {};
+    await handler({ method: 'GET', query, headers: {} }, {
+      status(c) { out.status = c; return this; }, json(b) { out.body = b; return this; },
+    });
+    assert.deepEqual(out, { status: 400, body: { error: 'invalid' } }, JSON.stringify(query));
+  }
+});
+
+test('NFR-011: 방 읽기도 저장소 환경변수가 없으면 503 unavailable', async () => {
+  const out = {};
+  await handler({ method: 'GET', query: { id: ROOM_ID }, headers: {} }, {
+    status(c) { out.status = c; return this; }, json(b) { out.body = b; return this; },
+  });
+  assert.deepEqual(out, { status: 503, body: { error: 'unavailable' } });
+});
+
+test('FUNC-023: 없거나 만료된 방은 404 not_found', () => {
+  const out = get([[]]);
+  assert.deepEqual({ status: out.status, body: out.body }, { status: 404, body: { error: 'not_found' } });
+  assert.deepEqual(out.commands, [['HGETALL', `room:${ROOM_ID}`]]);
+});
+
+test('NFR-011: 저장소가 실패하거나 이상한 값을 돌려주면 503 unavailable', () => {
+  for (const results of [['THROW'], [null], ['문자열']]) {
+    const out = get(results);
+    assert.deepEqual({ status: out.status, body: out.body }, { status: 503, body: { error: 'unavailable' } }, JSON.stringify(results));
+  }
+});
+
+test('FUNC-023: 방 정보와 참여자 목록을 입력한 순서대로 돌려주고 총무 토큰 해시는 숨긴다', () => {
+  const out = get([stored([
+    'p:p_second0001', person('택이', 'S2', '2026-10-04T01:00:02.000Z'),
+    'p:p_first00001', person('감이', 'S1', '2026-10-04T01:00:01.000Z'),
+  ])]);
+  assert.equal(out.status, 200);
+  assert.deepEqual(out.body, {
+    room_id: ROOM_ID, purpose: '회식', arrival_time: '2026-10-10T10:00:00.000Z', status: '입력중', is_host: false,
+    participants: [
+      { participant_id: 'p_first00001', nickname: '감이', origin_station_id: 'S1', updated_at: '2026-10-04T01:00:01.000Z' },
+      { participant_id: 'p_second0001', nickname: '택이', origin_station_id: 'S2', updated_at: '2026-10-04T01:00:02.000Z' },
+    ],
+  });
+  assert.ok(!JSON.stringify(out.body).includes(hostHash), '토큰 해시는 응답에 없다');
+  assert.equal(out.headers['Cache-Control'], 'no-store');
+});
+
+test('FUNC-023: 참여자가 없는 방도 빈 목록으로 읽힌다', () => {
+  const out = get([stored()]);
+  assert.equal(out.status, 200);
+  assert.deepEqual(out.body.participants, []);
+});
+
+test('FUNC-023: 총무 토큰(x-host-token 헤더)이 맞을 때만 is_host가 true', () => {
+  const headers = (token) => ({ host: 'eodiga3.vercel.app', ...(token === undefined ? {} : { 'x-host-token': token }) });
+  assert.equal(get([stored()], { headers: headers(HOST_TOKEN) }).body.is_host, true);
+  assert.equal(get([stored()], { headers: headers('wrong-token-123') }).body.is_host, false);
+  assert.equal(get([stored()], { headers: headers('short') }).body.is_host, false);
+  assert.equal(get([stored()], { headers: headers('x'.repeat(300)) }).body.is_host, false);
+  assert.equal(get([stored()], { headers: headers(undefined) }).body.is_host, false);
+  // 저장된 해시가 없는 방은 누구도 총무가 아니다
+  assert.equal(get([['purpose', '회식', 'status', '입력중']], { headers: headers(HOST_TOKEN) }).body.is_host, false);
+});
+
+test('FUNC-012: 확정된 방은 confirmation도 돌려주고, 깨진 값은 빼고 돌려준다', () => {
+  const confirmation = { v: 1, p: '회식', a: '2026-10-10T10:00:00.000Z', s: 'S1', pl: 'P1', e: '2026-11-09T10:00:00.000Z', people: [{ n: '감이', s: 'S2', m: 20 }] };
+  const base = stored().map((v) => (v === '입력중' ? '확정' : v));
+  const ok = get([[...base, 'confirmation', JSON.stringify(confirmation)]]);
+  assert.equal(ok.body.status, '확정');
+  assert.deepEqual(ok.body.confirmation, confirmation);
+  const broken = get([[...base, 'confirmation', '{깨진']]);
+  assert.equal(broken.status, 200);
+  assert.ok(!('confirmation' in broken.body));
+});
+
+test('FUNC-023: 깨진 참여자 항목은 건너뛰고 나머지는 보여준다', () => {
+  const out = get([stored([
+    'p:p_good000001', person('감이', 'S1', '2026-10-04T01:00:01.000Z'),
+    'p:p_broken0001', '{깨진',
+    'p:p_nostation1', JSON.stringify({ nickname: '택이' }),
+    'extra_field', 'x',
+  ])]);
+  assert.equal(out.status, 200);
+  assert.deepEqual(out.body.participants.map((p) => p.participant_id), ['p_good000001']);
 });

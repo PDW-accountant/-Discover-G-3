@@ -190,6 +190,13 @@ input.p-name{display:block;}
 .count button:disabled{color:#C9C0B6;background:transparent;cursor:not-allowed;}
 .count span{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;padding:13px 0;}
 
+/* 입력 현황 자동 확인을 멈췄을 때 (FUNC-023) */
+.idle-box{display:grid;gap:8px;margin-top:12px;}
+.idle-box:empty{display:none;}
+.idle-box .hint{margin:0;}
+.people>.btn.ghost.sm{width:100%;margin-top:4px;}
+.meta[hidden]{display:none;}
+
 /* 입력 완료 */
 .crew{display:flex;align-items:flex-end;gap:4px;margin:6px 0 16px;}
 .crew .avatar:nth-child(even){transform:translateY(-8px) rotate(4deg);}
