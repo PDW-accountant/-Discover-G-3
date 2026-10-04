@@ -13,3 +13,5 @@ export const POLL_INTERVAL_MS = 5000;              // 총무 화면 입력 현�
 export const POLL_STOP_AFTER_MS = 10 * 60 * 1000;  // 변화 없으면 자동 확인 중단 (FUNC-023)
 export const RESULT_TIMEOUT_MS = 10000;            // 결과 대기 한도 (NFR-001)
 export const MAX_SAVED_MEETINGS = 20;              // 내 모임 목록 최대 건수 (FUNC-020)
+export const WAIT_MINUTES = 3;                     // 배차 대기(분). 처음 탈 때·환승·급행 갈아타기마다 더한다 (FUNC-006). 검증 후 조정
+export const ESTIMATE_METERS_PER_MINUTE = 70;      // 그래프에 없는 역의 직선거리 예상 속도(분속 m) (SFR-020)
