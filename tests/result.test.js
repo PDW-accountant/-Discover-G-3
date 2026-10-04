@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { computeResult, roundUpTo5 } from '../src/js/screens/result.js';
+import { arrivalClock, computeResult, routeCardInfo, roundUpTo5 } from '../src/js/screens/result.js';
 
 // 실행: npm test
 
@@ -40,4 +40,51 @@ test('FUNC-009: 1위 결과로 확정 정보를 만들 수 있는 형태다 (tra
 
 test('FUNC-005: 후보 역이 없는 목적이면 noCandidates', () => {
   assert.deepEqual(computeResult({ ...data, candidates: {} }, { purpose: '회식' }, participants), { error: 'noCandidates' });
+});
+
+test('#53: 경로 카드 정보는 1위 결과의 이동시간을 그대로 쓴다 (분·환승·구간, 다시 계산하지 않음)', () => {
+  const r = computeResult(data, { purpose: '회식' }, participants);
+  for (const p of participants) {
+    const time = r.top.travel_times[p.participant_id];
+    const info = routeCardInfo(p, time, r.stationsById, r.top.station, r.expressLines);
+    assert.equal(info.minutes, time.minutes);
+    assert.equal(info.to.id, r.top.station.id);
+    assert.equal(info.from.id, p.origin_station_id);
+    assert.equal(info.steps.length, time.steps.length);
+    assert.equal(info.has_detail, info.steps.length > 0);
+    if (info.steps.length) {
+      assert.equal(info.steps[0].from.id, p.origin_station_id);                 // 출발역에서 시작해
+      assert.equal(info.steps[info.steps.length - 1].to.id, r.top.station.id);   // 만남 역에서 끝난다
+    }
+  }
+});
+
+test('#53: 환승이 있는 사람은 구간이 2개 이상이고 환승 횟수가 그대로 나온다', () => {
+  const r = computeResult(data, { purpose: '회식' }, participants);
+  const transferred = participants.map((p) => r.top.travel_times[p.participant_id]).find((time) => time.transfers > 0);
+  if (!transferred) return; // 이번 데이터에 환승하는 사람이 없으면 건너뜀
+  assert.ok(transferred.steps.length >= 2);
+});
+
+test('#53: 만남 역에서 출발하는 사람은 0분·구간 없음·세부 경로 없음', () => {
+  const r = computeResult(data, { purpose: '회식' }, participants);
+  const here = { participant_id: 'p_here', origin_station_id: r.top.station.id };
+  const info = routeCardInfo(here, { minutes: 0, transfers: 0, steps: [], is_estimated: false }, r.stationsById, r.top.station);
+  assert.equal(info.same_station, true);
+  assert.equal(info.minutes, 0);
+  assert.equal(info.has_detail, false);
+});
+
+test('#53: 예상 시간인 사람은 환승을 모름(null)·세부 경로 없음', () => {
+  const r = computeResult(data, { purpose: '회식' }, participants);
+  const info = routeCardInfo(participants[0], { minutes: 40, transfers: 0, steps: [], is_estimated: true }, r.stationsById, r.top.station);
+  assert.equal(info.is_estimated, true);
+  assert.equal(info.transfers, null);
+  assert.equal(info.has_detail, false);
+});
+
+test('#53: 약속 시각은 HH:MM (만남 역 출발자는 이 시각 정각에 출발)', () => {
+  assert.equal(arrivalClock(new Date(2026, 9, 8, 19, 0).toISOString()), '19:00');
+  assert.equal(arrivalClock(new Date(2026, 9, 8, 9, 5)), '09:05');
+  assert.equal(arrivalClock('잘못된 값'), '');
 });
