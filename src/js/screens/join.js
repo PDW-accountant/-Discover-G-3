@@ -8,7 +8,7 @@
 import { loadData, t } from '../lib/data.js';
 import { getRoom, saveParticipant } from '../lib/api-client.js';
 import { getParticipantId } from '../lib/storage.js';
-import { searchStations } from '../lib/stations.js';
+import { lineBadge, searchStations } from '../lib/stations.js';
 import { createShell, el } from '../lib/shell.js';
 import { characterNode } from '../lib/characters.js';
 import { MAX_PARTICIPANTS, NICKNAME_MAX_LENGTH } from '../config.js';
@@ -20,16 +20,6 @@ const ERROR_COPY = {
   duplicate_nickname: 'join.nicknameTaken',
   invalid: 'join.saveFailed',
   unavailable: 'join.saveFailed',
-};
-
-// 호선 표시: [동그라미 안 글자, 노선 색, 글자 색]
-const LINE_BADGES = {
-  1: ['1', '#0052A4', '#fff'], 2: ['2', '#00A84D', '#fff'], 3: ['3', '#EF7C1C', '#fff'], 4: ['4', '#00A5DE', '#fff'],
-  5: ['5', '#996CAC', '#fff'], 6: ['6', '#CD7C2F', '#fff'], 7: ['7', '#747F00', '#fff'], 8: ['8', '#E6186C', '#fff'],
-  9: ['9', '#BDB092', '#000'],
-  신분당: ['신분', '#D4003B', '#fff'], 공항철도: ['공항', '#0090D2', '#fff'], 경의중앙: ['경의', '#77C4A3', '#000'],
-  수인분당: ['수인', '#F5A200', '#000'], 신림: ['신림', '#6789CA', '#fff'], 우이신설: ['우이', '#B0CE18', '#000'],
-  경춘: ['경춘', '#0C8E72', '#fff'],
 };
 
 const SEARCH_SVG = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="m13 13 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
@@ -65,7 +55,7 @@ function sortedStations(stations, keyword) {
 
 function lineBadges(lines = []) {
   return lines.map((line) => {
-    const [label, background, color] = LINE_BADGES[line] ?? [line, '#8c959f', '#fff'];
+    const { label, background, color } = lineBadge(line);
     return el('span', {
       className: label.length > 1 ? 'badge two' : 'badge', textContent: label,
       title: `${line}`, style: `background:${background};color:${color}`,
