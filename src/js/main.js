@@ -6,6 +6,7 @@
 // 링크가 손상·만료되었으면 오류 대신 안내 화면(link-error)과 '처음으로' 버튼을 보여준다.
 
 import { loadData } from './lib/data.js';
+import { render as renderJoin } from './screens/join.js';
 
 async function start() {
   const app = document.getElementById('app');
@@ -14,6 +15,9 @@ async function start() {
   } catch (e) {
     console.warn('데이터를 불러오지 못했습니다', e);
   }
+  // FUNC-022(#20): ?room= 은 참여자 화면이 방 상태를 보고 입력·경로·안내 화면 중 하나를 연다.
+  const roomId = new URLSearchParams(location.search).get('room');
+  if (roomId) return renderJoin(app, { room_id: roomId });
   // TODO(FUNC-014): 주소에 따라 screens/의 render(app, ...)를 호출한다.
 }
 

@@ -18,9 +18,33 @@ export async function getRoom(roomId) {
   throw new Error('아직 구현되지 않았습니다');
 }
 
-/** FUNC-022·023 참여자 저장(추가·수정). 총무가 대신 입력할 때는 hostToken을 함께 보낸다. */
+/**
+ * FUNC-022·023 참여자 저장(추가·수정). 총무가 대신 입력할 때는 hostToken을 함께 보낸다.
+ * @param {string} roomId
+ * @param {{participant_id, nickname, origin_station_id}} participant
+ * @returns {Promise<{participant_id, nickname, origin_station_id, updated_at}|{error:string}>}
+ *   성공하면 RoomParticipant. 실패하면 { error }: 'not_found' | 'confirmed' | 'full' | 'duplicate_nickname' | 'invalid' | 'unavailable'
+ */
 export async function saveParticipant(roomId, participant, hostToken) {
-  throw new Error('아직 구현되지 않았습니다');
+  const body = {
+    room_id: roomId,
+    participant_id: participant.participant_id,
+    nickname: participant.nickname,
+    origin_station_id: participant.origin_station_id,
+  };
+  if (hostToken) body.host_token = hostToken;
+  try {
+    const res = await fetch('/api/room-participant', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => null);
+    if (res.ok && data?.participant) return data.participant;
+    return { error: data?.error ?? 'unavailable' };
+  } catch {
+    return { error: 'unavailable' };
+  }
 }
 
 /** FUNC-023 참여자 삭제 (총무만). */

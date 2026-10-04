@@ -12,9 +12,16 @@ function remove(key) {
   try { localStorage.removeItem(key); } catch { /* 저장소 사용 불가 */ }
 }
 
+let memoryParticipantId = null; // 저장소를 못 쓰는 브라우저에서 이 화면에 있는 동안 쓰는 id
+
 /** 이 브라우저의 참여자 id (없으면 무작위로 만들어 저장). FUNC-022 */
 export function getParticipantId() {
-  throw new Error('아직 구현되지 않았습니다');
+  const saved = read('eodiga3:pid');
+  if (typeof saved === 'string' && saved) return saved;
+  const id = memoryParticipantId ?? `p_${crypto.randomUUID().replace(/-/g, '')}`;
+  memoryParticipantId = id;
+  write('eodiga3:pid', id);
+  return id;
 }
 
 /** 총무 토큰 저장·읽기. FUNC-021 */
