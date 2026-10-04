@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { placeLink, placesFor } from '../src/js/lib/places.js';
 
 // 실행: npm test
@@ -15,6 +16,16 @@ test('FUNC-010: 역·목적이 맞는 장소를 order 순으로 최대 3곳', ()
   assert.deepEqual(placesFor(places, 'S2', '회식').map((p) => p.place_id), ['y']); // 3곳 미만이면 있는 만큼
   assert.deepEqual(placesFor(places, 'S3', '회식'), []);
   assert.deepEqual(placesFor(undefined, 'S1', '회식'), []);
+});
+
+test('FUNC-010: 실제 데이터에서 목적 3종 × 후보 역마다 장소 3곳이 나온다', () => {
+  const read = (name) => JSON.parse(readFileSync(new URL(`../data/${name}.json`, import.meta.url), 'utf8'));
+  const places = read('places');
+  const candidates = read('candidates');
+  const short = Object.entries(candidates).flatMap(([purpose, ids]) => ids
+    .map((id) => [purpose, id, placesFor(places, id, purpose).length])
+    .filter(([, , n]) => n !== 3));
+  assert.deepEqual(short, []);
 });
 
 test("FUNC-011: '보기' 링크는 kakao_url → naver_url → 카카오맵 검색 순", () => {
