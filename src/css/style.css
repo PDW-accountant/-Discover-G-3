@@ -43,7 +43,13 @@ button:disabled{cursor:default;opacity:.4}
 .btn-primary{width:100%;margin-top:8px;padding:14px;border:0;border-radius:4px;background:var(--accent);color:#fff;font-size:18px;font-weight:800}
 .error{min-height:1em;color:#cf222e}
 
-/* 확정 요약 (FUNC-012) */
-.prow-station.confirm-person{flex-direction:column;align-items:flex-start;justify-content:center;gap:2px}
-.prow-station.confirm-person .hint{margin:0}
-.share-link{width:100%;box-sizing:border-box;padding:10px;border:2px solid var(--ink);border-radius:4px;font-size:14px}
+/* 확정 화면 (FUNC-012) — 손그림 와이어프레임 기준 */
+.confirm-message{margin:40px 0 32px;font-size:20px;font-weight:700;line-height:1.5}
+.confirm-message p{margin:0}
+.confirm-box{margin:0 8px;padding:20px 16px;border:2px solid var(--ink);border-radius:4px;text-align:center;font-size:20px;font-weight:800}
+.confirm-box p{margin:0}
+.confirm-place{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 16px;overflow-wrap:anywhere}
+.confirm-place a{color:inherit;text-decoration-color:var(--accent);text-underline-offset:4px}
+.confirm-time{margin-top:8px!important}
+.btn-route{display:flex;align-items:center;justify-content:center;gap:12px;width:calc(100% - 16px);margin:48px 8px 0;padding:16px;border:2px solid var(--ink);border-radius:4px;background:#fff;font-size:19px;font-weight:800}
+.btn-route .arrow{color:var(--accent);font-size:24px;line-height:1}
