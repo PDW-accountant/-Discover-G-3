@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { drawRoute, routePoints } from '../src/js/lib/map.js';
+import { drawRoute, loadMapSdk, routePoints } from '../src/js/lib/map.js';
 
 // 실행: npm test
 
@@ -42,4 +42,21 @@ test('FUNC-015: 역 이름에 특수문자가 있어도 SVG가 깨지지 않는�
   const box = { innerHTML: '' };
   drawRoute(box, { from: { ...from, name: '<a&"b>' }, to, steps: [] });
   assert.doesNotMatch(box.innerHTML, /<a&/);
+});
+
+test('#16: 경로선은 구간에서 열차가 서는 역(via)을 따라 그린다', () => {
+  const samsung = st('삼성', 37.5089, 127.0631);
+  const steps = [{ line: '2', from, to, minutes: 12, via: [from, samsung, mid, to] }];
+  assert.deepEqual(routePoints({ from, to, steps }).map((p) => p.id), ['잠실', '삼성', '선릉', '강남']);
+});
+
+test('#16: 키가 없거나 브라우저가 아니면 카카오 지도 SDK를 부르지 않고 false (SVG 약도 유지)', async () => {
+  assert.equal(await loadMapSdk({ key: '' }), false);
+  assert.equal(await loadMapSdk({ key: 'k', doc: undefined, win: undefined }), false); // Node (검사 환경)
+});
+
+test('#16: SDK 스크립트를 불러오지 못하면(등록 안 한 도메인·네트워크) false', async () => {
+  const head = { append: (script) => setTimeout(() => script.onerror(), 0) };
+  const doc = { createElement: () => ({}), head };
+  assert.equal(await loadMapSdk({ key: 'k', doc, win: {} }), false);
 });

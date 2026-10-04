@@ -39,9 +39,12 @@ test('#53: 계산 결과 구간(역 id)을 화면용 구간(역 정보·급행 �
     { line: '2', express: false, from: 'B', to: 'X', minutes: 3 },
   ], stationsById, expressLinesOf(graph));
   assert.deepEqual(steps, [
-    { line: '9', train: 'express', from: stationsById.A, to: stationsById.B, minutes: 7 },
-    { line: '2', train: null, from: stationsById.B, to: { id: 'X', name: 'X', lines: [] }, minutes: 3 }, // 모르는 역은 id를 이름으로
+    { line: '9', train: 'express', from: stationsById.A, to: stationsById.B, minutes: 7, via: [] },
+    { line: '2', train: null, from: stationsById.B, to: { id: 'X', name: 'X', lines: [] }, minutes: 3, via: [] }, // 모르는 역은 id를 이름으로
   ]);
+  // 지나는 역(via, 지도 경로선용 #16)도 역 정보로 바꾼다
+  const [withVia] = resolveSteps([{ line: '3', express: false, from: 'A', to: 'C', minutes: 5, via: ['A', 'B', 'C'] }], stationsById, new Set());
+  assert.deepEqual(withVia.via, [stationsById.A, stationsById.B, stationsById.C]);
   assert.deepEqual(resolveSteps(undefined, stationsById, new Set()), []);
 });
 
