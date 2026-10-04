@@ -18,10 +18,31 @@ function goHome() {
   location.href = location.pathname;
 }
 
+const BACK_BUTTON = '.icon-btn.back'; // 화면 위쪽 [뒤로] 버튼
+const isBackButton = (event) => Boolean(event?.target?.closest?.(BACK_BUTTON));
+
+/**
+ * 앱 밖으로 나간다 (#44 첫 화면 [뒤로] 두 번째). 웹페이지는 스스로 연 창이 아니면 닫을 수 없어서 할 수 있는 것을 차례로 해 본다.
+ *   카카오톡 안 브라우저(공유 링크로 연 경우): 카카오톡이 정한 주소로 창을 닫는다.
+ *   그 밖: 창 닫기 → 앱을 열기 전 페이지로 이동(steps칸 뒤) → 그래도 화면이 남아 있으면 onStay(브라우저를 닫아 달라는 안내).
+ * @param {number} steps 앱을 연 자리보다 한 칸 앞으로 가려면 몇 칸 뒤로 가야 하는지(나가기 확인 자리가 있으면 2)
+ */
+export function exitApp(steps, win = globalThis.window, onStay = () => {}) {
+  if (/KAKAOTALK/i.test(win?.navigator?.userAgent ?? '')) {
+    win.location.href = 'kakaotalk://inappbrowser/close';
+    return;
+  }
+  try { win.close(); } catch { /* 스스로 연 창이 아니면 막힌다 */ }
+  try { win.history.go(-steps); } catch { /* 기록을 쓸 수 없는 환경 */ }
+  win?.setTimeout?.(() => { if (win.document?.visibilityState !== 'hidden') onStay(); }, 700);
+}
+
 // ---------- 화면 이동 기록 (#44) ----------
 // 화면을 바꿀 때 go()로 '이전 화면 + 그때 입력값'을 앱 안 기록에 쌓고 브라우저 기록도 하나 남긴다.
 // [뒤로] 버튼과 휴대폰 뒤로가기는 둘 다 브라우저 뒤로가기(popstate)로 처리해 바로 이전 화면을 그때 입력값으로 다시 그린다.
 // 첫 화면에서 뒤로가기: 1번이면 '한 번 더 누르면 종료돼요', 이어서 1번 더 누르면 앱 밖으로 나간다.
+//   화면 위쪽 [뒤로]도 같다. [뒤로]를 누른 것은 아래 '화면을 누름'으로 치지 않고(누를 때마다 자리가 다시 생겨 안내만 반복되던 문제),
+//   두 번째 [뒤로]는 브라우저 뒤로가기 대신 exitApp으로 나간다(링크로 바로 연 창은 이전 페이지가 없어 뒤로가기로는 안 꺼진다).
 //   휴대폰 Chrome은 사용자가 화면을 누르기 전에 페이지가 스스로 만든 기록을 뒤로가기 때 건너뛴다.
 //   그래서 '나가기 확인' 자리는 앱을 열 때가 아니라 첫 화면에서 처음 누르거나 키를 칠 때 만든다(guard).
 //   안내를 띄운 뒤에는 자리를 다시 만들지 않아 다음 뒤로가기는 그대로 나간다. 그 사이 화면을 다시 누르면 자리를 다시 만든다.
@@ -30,14 +51,17 @@ function goHome() {
 /**
  * 화면 이동 기록을 만든다. 화면 코드는 아래 기본 인스턴스의 go·startAt·goBack을 쓴다(검사에서는 가짜 window를 넣는다).
  * @param {Window|null|undefined} win history·addEventListener를 가진 객체
- * @param {{onExitHint?: () => void, onFallbackHome?: () => void}} options
+ * @param {{onExitHint?: () => void, onFallbackHome?: () => void, onExit?: (steps: number) => void}} options
  */
-export function createNavigator(win, { onExitHint = () => {}, onFallbackHome = goHome } = {}) {
+export function createNavigator(win, { onExitHint = () => {}, onFallbackHome = goHome, onExit = (steps) => exitApp(steps, win) } = {}) {
   const stack = [];   // 이전 화면들 [{ renderFn, container, params }]
   let current = null; // 지금 화면
   let usingHistory = false; // 브라우저 기록을 쓸 수 있는지(막힌 환경이면 앱 안 기록만 쓴다)
   let guarded = false;      // 첫 화면 위에 '나가기 확인' 자리가 있는지
+  let exitArmed = false;    // '한 번 더 누르면 종료돼요'를 띄운 뒤인지 (다음 [뒤로]는 나가기)
   let listening = false;
+
+  const armExit = () => { exitArmed = true; onExitHint(); };
 
   const browserHistory = () => { try { return win?.history ?? null; } catch { return null; } };
   const push = (state) => { try { browserHistory().pushState(state, ''); return true; } catch { return false; } };
@@ -47,8 +71,10 @@ export function createNavigator(win, { onExitHint = () => {}, onFallbackHome = g
     return entry.renderFn(entry.container, entry.params);
   }
 
-  /** 첫 화면에서 사용자가 누르거나 키를 쳤을 때: '나가기 확인' 자리를 만든다(사용자 동작 직후라 휴대폰이 건너뛰지 않음). */
-  function onUserActivation() {
+  /** 첫 화면에서 사용자가 누르거나 키를 쳤을 때: '나가기 확인' 자리를 만든다(사용자 동작 직후라 휴대폰이 건너뛰지 않음).
+   *  [뒤로] 말고 다른 곳을 누르면 종료 안내를 거둔다(다음 뒤로가기는 다시 안내부터). */
+  function onUserActivation(event) {
+    if (event && !isBackButton(event)) exitArmed = false;
     if (!usingHistory || guarded || stack.length) return;
     guarded = push({ eodiga3: 0 });
   }
@@ -58,7 +84,7 @@ export function createNavigator(win, { onExitHint = () => {}, onFallbackHome = g
     if (!state || typeof state !== 'object' || !('eodiga3' in state)) return undefined; // 우리 기록이 아님(#d= 붙여넣기 등)
     if (state.root) { // 첫 화면에서 뒤로 → 안내. 자리는 다시 만들지 않아 한 번 더 누르면 나간다
       guarded = false;
-      onExitHint();
+      armExit();
       return 'hint';
     }
     const target = state.eodiga3;
@@ -102,8 +128,14 @@ export function createNavigator(win, { onExitHint = () => {}, onFallbackHome = g
     return renderFn(container, params);
   }
 
-  /** [뒤로] 버튼. 브라우저 기록이 있으면 휴대폰 뒤로가기와 같은 길로, 없으면 앱 안 기록으로. */
+  /** [뒤로] 버튼. 브라우저 기록이 있으면 휴대폰 뒤로가기와 같은 길로, 없으면 앱 안 기록으로.
+   *  첫 화면(앱을 연 화면)에서는 1번째는 안내만, 2번째는 앱 밖으로(exitApp). */
   function goBack() {
+    if (usingHistory && !stack.length) {
+      if (!exitArmed) return armExit();
+      exitArmed = false;
+      return onExit(guarded ? 2 : 1);
+    }
     if (usingHistory) {
       try { browserHistory().back(); return; } catch { usingHistory = false; }
     }
@@ -115,12 +147,15 @@ export function createNavigator(win, { onExitHint = () => {}, onFallbackHome = g
 }
 
 let activeToast = () => {};
-const appNav = createNavigator(globalThis.window, { onExitHint: () => activeToast(t('nav.exitHint')) });
+const appNav = createNavigator(globalThis.window, {
+  onExitHint: () => activeToast(t('nav.exitHint')),
+  onExit: (steps) => exitApp(steps, globalThis.window, () => activeToast(t('nav.closeHint'))),
+});
 export const { startAt, go, goBack } = appNav;
 
 function header(showNav) {
   const back = el('button', {
-    type: 'button', className: 'icon-btn', ariaLabel: t('join.back'), hidden: !showNav,
+    type: 'button', className: 'icon-btn back', ariaLabel: t('join.back'), hidden: !showNav,
     onclick: () => goBack(),
   });
   back.innerHTML = `${BACK_SVG}${t('join.back')}`;
