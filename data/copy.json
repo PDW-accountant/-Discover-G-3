@@ -8,6 +8,8 @@
   "place.empty": "아직 준비된 장소가 없어요",
   "route.leaveNow": "지금 출발하세요",
   "link.invalid": "링크가 만료되었거나 올바르지 않아요",
+  "link.invalidHint": "링크를 보낸 사람에게 다시 받아 주세요",
+  "link.home": "처음으로",
   "meetings.empty": "아직 저장된 약속이 없어요",
   "meetings.deviceOnly": "이 휴대폰에 저장됐어요",
   "app.name": "어디gㅏ3",

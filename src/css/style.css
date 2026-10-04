@@ -211,6 +211,9 @@ input.p-name.invalid{border-color:#cf222e;}
 .ticket-bot dt{color:var(--muted);}
 .ticket-bot dd{margin:0;font-weight:700;}
 
+/* 빈 화면·잘못된 링크 안내 (FUNC-014) — 프로토타입 .empty-state 그대로 */
+.empty-state{text-align:center;padding:40px 10px;color:var(--muted);}
+
 /* 안내 토스트 */
 .toast{
   position:absolute;left:50%;bottom:110px;transform:translate(-50%,20px);opacity:0;pointer-events:none;
