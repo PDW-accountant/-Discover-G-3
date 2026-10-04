@@ -3,14 +3,38 @@
 // 화면 코드는 fetch를 직접 쓰지 않고 이 파일의 함수만 쓴다.
 // 서버가 없거나(Live Server로 화면만 볼 때) 실패하면 예외 대신 대체 값을 돌려줘 화면이 멈추지 않게 한다(NFR-011).
 
-/** 서버 기능 사용 가능 여부. 서버가 없으면 false. @returns {Promise<{rooms:boolean}>} */
+/** 서버 기능 사용 가능 여부. 서버가 없거나 응답이 이상하면 false. @returns {Promise<{rooms:boolean}>} */
 export async function getStatus() {
-  throw new Error('아직 구현되지 않았습니다');
+  try {
+    const res = await fetch('/api/status');
+    const data = await res.json().catch(() => null);
+    return { rooms: res.ok && data?.rooms === true };
+  } catch {
+    return { rooms: false };
+  }
 }
 
-/** FUNC-021 모임 방 만들기. @returns {Promise<{room_id, join_url, host_token}>} */
+/**
+ * FUNC-021 모임 방 만들기.
+ * @param {{purpose, arrival_time}} request MeetingRequest
+ * @returns {Promise<{room_id, join_url, host_token}|{error:string}>}
+ *   성공하면 Room. 실패하면 { error }: 'invalid' | 'unavailable' (→ 총무 일괄 입력으로 진행 안내)
+ */
 export async function createRoom(request) {
-  throw new Error('아직 구현되지 않았습니다');
+  try {
+    const res = await fetch('/api/room', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ purpose: request.purpose, arrival_time: request.arrival_time }),
+    });
+    const data = await res.json().catch(() => null);
+    if (res.ok && data?.room_id && data?.join_url && data?.host_token) {
+      return { room_id: data.room_id, join_url: data.join_url, host_token: data.host_token };
+    }
+    return { error: data?.error === 'invalid' ? 'invalid' : 'unavailable' };
+  } catch {
+    return { error: 'unavailable' };
+  }
 }
 
 /** FUNC-014·023 방 정보 읽기. @returns {Promise<Room|null>} 없거나 만료면 null */

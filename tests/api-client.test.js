@@ -1,6 +1,6 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { saveParticipant, confirmRoom } from '../src/js/lib/api-client.js';
+import { saveParticipant, createRoom, getStatus, confirmRoom } from '../src/js/lib/api-client.js';
 
 const realFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = realFetch; });
@@ -80,4 +80,65 @@ test('FUNC-012: confirmRoom이 실패해도 예외 없이 { error }', async () =
   assert.deepEqual(await confirmRoom('room1234567', {}, 't'), { error: 'unavailable' });
   fakeFetch(() => new Response('<html>Not Found</html>', { status: 404 }));
   assert.deepEqual(await confirmRoom('room1234567', {}, 't'), { error: 'unavailable' });
+});
+
+const meeting = { purpose: '회식', arrival_time: '2026-10-10T10:00:00.000Z' };
+const room = { room_id: 'room1234567', join_url: 'https://eodiga3.vercel.app/?room=room1234567', host_token: 'host-token' };
+
+test('FUNC-021: 방 만들기는 목적·도착 시간만 /api/room에 POST한다', async () => {
+  const calls = fakeFetch(() => json(200, room));
+  await createRoom({ ...meeting, extra: '보내면 안 되는 값' });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, '/api/room');
+  assert.equal(calls[0].options.method, 'POST');
+  assert.equal(calls[0].options.headers['Content-Type'], 'application/json');
+  assert.deepEqual(calls[0].body, meeting);
+});
+
+test('FUNC-021: 성공하면 Room(room_id, join_url, host_token)을 돌려준다', async () => {
+  fakeFetch(() => json(200, { ...room, host_token_hash: '서버 내부 값' }));
+  assert.deepEqual(await createRoom(meeting), room);
+});
+
+test('FUNC-021: 서버가 거절하면 예외 없이 { error }를 돌려준다', async () => {
+  fakeFetch(() => json(400, { error: 'invalid' }));
+  assert.deepEqual(await createRoom(meeting), { error: 'invalid' });
+  fakeFetch(() => json(503, { error: 'unavailable' }));
+  assert.deepEqual(await createRoom(meeting), { error: 'unavailable' });
+});
+
+test('NFR-011: 방 만들기도 서버가 없거나 응답이 이상하면 unavailable', async () => {
+  const cases = [
+    () => { throw new TypeError('Failed to fetch'); },
+    () => new Response('<html>Not Found</html>', { status: 404 }),
+    () => new Response('not json', { status: 500 }),
+    () => json(200, {}),                                                 // 성공인데 Room이 없음
+    () => json(200, { room_id: 'room1234567', join_url: 'x' }),          // host_token 없음
+    () => json(501, { error: '아직 구현되지 않았습니다' }),
+  ];
+  for (const respond of cases) {
+    fakeFetch(respond);
+    assert.deepEqual(await createRoom(meeting), { error: 'unavailable' });
+  }
+});
+
+test('NFR-011: 서버 상태 확인 — 연결되어 있으면 rooms:true', async () => {
+  globalThis.fetch = async (url) => { assert.equal(url, '/api/status'); return json(200, { rooms: true }); };
+  assert.deepEqual(await getStatus(), { rooms: true });
+  globalThis.fetch = async () => json(200, { rooms: false });
+  assert.deepEqual(await getStatus(), { rooms: false });
+});
+
+test('NFR-011: 서버 상태 확인 — 서버가 없거나 응답이 이상하면 예외 없이 rooms:false', async () => {
+  const cases = [
+    () => { throw new TypeError('Failed to fetch'); },
+    () => new Response('<html>Not Found</html>', { status: 404 }),      // Live Server처럼 서버 함수가 없을 때
+    () => json(503, { rooms: true }),                                    // 오류 응답은 믿지 않는다
+    () => json(200, { rooms: 'yes' }),
+    () => json(200, {}),
+  ];
+  for (const respond of cases) {
+    globalThis.fetch = async () => respond();
+    assert.deepEqual(await getStatus(), { rooms: false });
+  }
 });

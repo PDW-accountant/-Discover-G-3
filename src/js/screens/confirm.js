@@ -1,6 +1,6 @@
-// ④ 확정·카카오톡 공유·링크 복사 (개발 A) — FUNC-012, FUNC-013, FUNC-020(목록에 추가)
-// 손그림 와이어프레임 기준: '일정이 확정되었어요' + 장소 상자(역·가게명·도착 시각) + '나의 경로 확인하기'.
-// 참여자별 소요시간·권장 출발 시각은 개인 경로 화면(route.js, FUNC-015)에서 보여준다.
+// ④ 약속 확정 (개발 A) — FUNC-012, FUNC-013, FUNC-020(목록에 추가)
+// 모이자 UI 프로토타입2의 '약속 확정'(vDone) 화면: 웃는 캐릭터 → '일정이 확정되었어요' → 확정 티켓(역·가게명·시간·목적·인원)
+// → 아래 고정 버튼 '나의 경로 확인하기'. 참여자별 소요시간·권장 출발 시각은 개인 경로 화면(route.js, FUNC-015)에서 보여준다.
 // 공유 링크(share_url)는 화면에 그리지 않고 카카오톡 공유·링크 복사(FUNC-013, #11)에서 쓴다.
 // 문구는 lib/data.js의 t()로 읽는다.
 //
@@ -19,20 +19,27 @@ import { confirmRoom } from '../lib/api-client.js';
 import { addMeeting, getHostToken } from '../lib/storage.js';
 import { createConfirmation, hashUrl, roomUrl } from '../lib/share-link.js';
 import { placeLink } from '../lib/places.js';
+import { createShell, el } from '../lib/shell.js';
+import { characterNode } from '../lib/characters.js';
 import { render as renderRoute } from './route.js';
 
-function el(tag, props = {}, children = []) {
-  const node = Object.assign(document.createElement(tag), props);
-  node.append(...children);
-  return node;
-}
+const KAKAO_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.8 1.8 5.3 4.6 6.7L5.5 21l4-2.6c.8.1 1.6.2 2.5.2 5.5 0 10-3.6 10-8S17.5 3 12 3z" fill="#FFE812" stroke="#000" stroke-width="1.8"/></svg>';
+const ARROW_SVG = '<svg width="20" height="14" viewBox="0 0 20 14" aria-hidden="true"><path d="M1 7h16M12 2l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 const pad = (n) => String(n).padStart(2, '0');
 
 function formatArrival(value) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return String(value ?? '');
-  return t('confirm.arrival', { month: d.getMonth() + 1, day: d.getDate(), hour: pad(d.getHours()), minute: pad(d.getMinutes()) });
+  return t('confirm.arrival', {
+    month: d.getMonth() + 1, day: d.getDate(), weekday: t('confirm.weekdays').charAt(d.getDay()),
+    hour: pad(d.getHours()), minute: pad(d.getMinutes()),
+  });
+}
+
+/** 줄바꿈(\n)이 든 문구를 <br>로 나눈 자식 목록으로 만든다. */
+function lines(text) {
+  return text.split('\n').flatMap((line, i) => (i ? [el('br'), line] : [line]));
 }
 
 /** 가게명 링크 (FUNC-011). places.js 구현 전에는 kakao_url → 카카오맵 '역 이름 + 장소명' 검색. */
@@ -44,19 +51,15 @@ function linkFor(place, stationName) {
   }
 }
 
-/** 뒤로·앱 이름·홈 버튼 (join.js와 같은 모양) */
-function topBar() {
-  const home = () => { location.href = location.pathname; };
-  return el('header', { className: 'topbar' }, [
-    el('button', { type: 'button', className: 'btn-box', textContent: t('join.back'), onclick: () => (history.length > 1 ? history.back() : home()) }),
-    el('span', { className: 'topbar-title', textContent: t('app.name') }),
-    el('button', { type: 'button', className: 'btn-home', title: t('join.home'), ariaLabel: t('join.home'), textContent: '⌂', onclick: home }),
-  ]);
+/** 안내 문구 한 줄만 있는 화면 */
+function showMessage(container, text, className = 'lead') {
+  const props = className === 'error' ? { className, role: 'alert', textContent: text } : { className, textContent: text };
+  createShell(container).screen.replaceChildren(el('p', props));
 }
 
 /** 경로 화면을 연다. 아직 없거나 실패하면 안내 문구만 보여준다. */
 function openRoute(container, params) {
-  const fallback = () => container.replaceChildren(topBar(), el('p', { className: 'meta', textContent: t('confirm.routeNotReady') }));
+  const fallback = () => showMessage(container, t('confirm.routeNotReady'));
   try {
     Promise.resolve(renderRoute(container, params)).catch(fallback);
   } catch {
@@ -69,25 +72,38 @@ function drawSummary(container, confirmation, { stations, places, roomId, notice
   const place = places.find((p) => p.place_id === confirmation.pl);
   const placeName = place
     ? el('a', { href: linkFor(place, stationName), target: '_blank', rel: 'noopener', textContent: place.name })
-    : el('span', { textContent: confirmation.pl });
+    : confirmation.pl;
 
-  container.replaceChildren(
-    topBar(),
-    el('div', { className: 'confirm-message' }, [
-      el('p', { textContent: t('confirm.title') }),
-      el('p', { textContent: t('confirm.shareHint') }),
-    ]),
-    el('div', { className: 'confirm-box' }, [
-      el('p', { className: 'confirm-place' }, [el('span', { textContent: stationName }), placeName]),
-      el('p', { className: 'confirm-time', textContent: formatArrival(confirmation.a) }),
+  const sub = el('p', { className: 'done-sub' }, [t('confirm.shareHint')]);
+  sub.insertAdjacentHTML('afterbegin', KAKAO_SVG);
+
+  const { screen, foot } = createShell(container);
+  screen.replaceChildren(el('div', { className: 'done-wrap' }, [
+    el('div', { className: 'crew' }, confirmation.people.slice(0, 5).map((_, i) => characterNode(i, 'happy', 64))),
+    el('p', { className: 'done-msg' }, lines(t('confirm.title'))),
+    sub,
+    el('div', { className: 'ticket' }, [
+      el('div', { className: 'ticket-top' }, [
+        el('div', { className: 'eyebrow', textContent: t('confirm.ticket') }),
+        el('div', { className: 'st', textContent: t('confirm.station', { name: stationName }) }),
+        el('div', { className: 'pl' }, [placeName]),
+      ]),
+      el('dl', { className: 'ticket-bot' }, [
+        el('dt', { textContent: t('confirm.time') }), el('dd', { textContent: formatArrival(confirmation.a) }),
+        el('dt', { textContent: t('confirm.purpose') }), el('dd', { textContent: t(`meeting.purpose.${confirmation.p}`) }),
+        el('dt', { textContent: t('confirm.people') }), el('dd', { textContent: confirmation.people.map((p) => p.n).join(', ') }),
+      ]),
     ]),
     ...(notice ? [el('p', { className: 'error', role: 'alert', textContent: notice })] : []),
     // TODO(FUNC-013, #11): 카카오톡 공유·링크 복사 버튼 (confirmation.share_url 사용)
-    el('button', {
-      type: 'button', className: 'btn-route',
-      onclick: () => openRoute(container, { confirmation, room_id: roomId }),
-    }, [el('span', { textContent: t('confirm.myRoute') }), el('span', { className: 'arrow', ariaHidden: 'true', textContent: '➜' })]),
-  );
+  ]));
+
+  const routeButton = el('button', {
+    type: 'button', className: 'btn',
+    onclick: () => openRoute(container, { confirmation, room_id: roomId }),
+  }, [t('confirm.myRoute')]);
+  routeButton.insertAdjacentHTML('beforeend', ARROW_SVG);
+  foot.replaceChildren(routeButton);
 }
 
 /** 화면을 그린다. @param {HTMLElement} container */
@@ -102,15 +118,15 @@ export async function render(container, params = {}) {
   }
 
   const { request, selected_result: selectedResult, place, participants, room_id: roomId } = params;
-  if (!place) return container.replaceChildren(topBar(), el('p', { className: 'error', textContent: t('confirm.noPlace') }));
-  container.replaceChildren(topBar(), el('p', { className: 'meta', textContent: t('confirm.saving') }));
+  if (!place) return showMessage(container, t('confirm.noPlace'), 'error');
+  showMessage(container, t('confirm.saving'));
 
   let confirmation;
   try {
     confirmation = createConfirmation(request, selectedResult, place, participants);
   } catch (e) {
     console.warn('확정 정보를 만들지 못했습니다', e);
-    return container.replaceChildren(topBar(), el('p', { className: 'error', role: 'alert', textContent: t('confirm.failed') }));
+    return showMessage(container, t('confirm.failed'), 'error');
   }
 
   // 저장소가 있으면 방에 저장하고 방 링크를 그대로 공유 링크로 쓴다. 없거나 실패하면 #d= 링크 (SFR-015, NFR-011).

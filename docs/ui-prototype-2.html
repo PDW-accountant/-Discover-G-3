@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>모이자 · UI 프로토타입</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --accent:#D9512C;        /* 포인트 주황(장식, 큰 글자) */
+  --accent-ink:#C2441F;    /* 버튼 바탕·작은 글자용(대비 4.5:1 이상) */
+  --accent-soft:#F7E2D7;
+  --accent-mist:#FBF2EC;
+  --paper:#F9F6F1;         /* 화면 바탕 */
+  --card:#FFFFFF;
+  --ink:#2B2A28;           /* 본문 글자 */
+  --muted:#6E6862;
+  --hair:#E7E0D7;          /* 얇은 선 */
+  --backdrop:#F3EEE7;
+  --serif:"Lora","Noto Serif KR",Georgia,serif;
+  --sans:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --backdrop:#24201C; } }
+:root[data-theme="dark"]{ --backdrop:#24201C; }
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+*,*::before,*::after{box-sizing:inherit;}
+html,body{margin:0;height:100%;}
+body{
+  background:
+    radial-gradient(60% 50% at 0% 10%, rgba(255,255,255,.75), transparent 70%),
+    radial-gradient(45% 40% at 100% 0%, rgba(217,81,44,.10), transparent 70%),
+    var(--backdrop);
+  font-family:var(--sans);color:var(--ink);
+  display:flex;align-items:center;justify-content:center;gap:56px;
+  -webkit-font-smoothing:antialiased;word-break:keep-all;
+}
+button,input,select{font:inherit;color:inherit;}
+button{cursor:pointer;}
+:focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px;}
+
+/* ---------- 데스크톱 안내 ---------- */
+.side{max-width:240px;}
+.side .eyebrow{margin-bottom:14px;}
+.side h1{font-family:var(--serif);font-weight:700;font-size:52px;line-height:1.05;margin:0 0 14px;letter-spacing:-.01em;}
+.side p{font-size:14px;line-height:1.7;margin:0 0 24px;color:var(--muted);}
+.side ol{list-style:none;padding:0;margin:0;display:grid;gap:2px;border-top:1px solid var(--hair);}
+.side button{
+  width:100%;text-align:left;background:transparent;border:0;border-bottom:1px solid var(--hair);
+  padding:11px 2px;font-size:14px;font-weight:500;color:var(--muted);
+  display:flex;gap:12px;align-items:baseline;
+}
+.side button .no{font-family:var(--serif);font-weight:700;color:var(--accent-ink);min-width:16px;}
+.side button[aria-current="true"]{color:var(--ink);font-weight:700;}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .side{color:#F3EEE7;} :root:not([data-theme="light"]) .side p,:root:not([data-theme="light"]) .side button{color:#BDB4AA;} :root:not([data-theme="light"]) .side button[aria-current="true"]{color:#fff;} }
+:root[data-theme="dark"] .side{color:#F3EEE7;}
+@media (max-width:820px){ .side{display:none;} }
+
+.eyebrow{display:flex;align-items:center;gap:10px;color:var(--accent-ink);font-size:13px;font-weight:700;letter-spacing:.02em;}
+.eyebrow::before{content:"";width:26px;height:2px;background:var(--accent);flex:none;}
+
+/* ---------- 폰 프레임 ---------- */
+.phone{
+  width:390px;height:min(820px,calc(100% - 40px));
+  background:var(--paper);border:1px solid var(--hair);border-radius:38px;
+  box-shadow:0 30px 60px -30px rgba(80,50,30,.35),0 0 0 8px #fff;
+  display:flex;flex-direction:column;overflow:hidden;position:relative;
+}
+@media (max-width:820px){
+  body{display:block;}
+  .phone{width:100%;height:100%;border:0;border-radius:0;box-shadow:none;}
+}
+
+/* ---------- 헤더 ---------- */
+.bar{
+  background:rgba(249,246,241,.92);border-bottom:1px solid var(--hair);
+  display:grid;grid-template-columns:76px 1fr 76px;align-items:center;
+  padding:14px 16px;flex:none;
+}
+.logo{
+  font-family:var(--serif);font-weight:900;font-size:24px;line-height:1;text-align:center;
+  display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:-.01em;
+}
+.logo svg{width:22px;height:22px;}
+.icon-btn{
+  height:38px;border:1px solid var(--hair);background:var(--card);border-radius:999px;
+  font-weight:500;font-size:13px;display:flex;align-items:center;justify-content:center;gap:4px;padding:0 12px 0 8px;white-space:nowrap;justify-self:start;
+}
+.icon-btn:hover{border-color:#D3C9BD;}
+.icon-btn.home{width:38px;padding:0;justify-self:end;}
+.icon-btn[hidden]{visibility:hidden;display:flex;}
+
+/* ---------- 본문 ---------- */
+.screen{
+  flex:1;overflow-y:auto;padding:26px 22px 22px;display:flex;flex-direction:column;
+  background:radial-gradient(80% 40% at 100% 0%, rgba(217,81,44,.07), transparent 70%);
+}
+.foot{flex:none;padding:14px 22px 20px;border-top:1px solid var(--hair);background:var(--paper);display:grid;gap:10px;}
+.foot:empty{display:none;}
+
+.hero{margin:6px 0 30px;}
+.hero h1{font-family:var(--serif);font-weight:700;font-size:38px;line-height:1.18;margin:12px 0 10px;letter-spacing:-.01em;}
+.hero p{margin:0;color:var(--muted);font-size:15px;line-height:1.6;}
+.hero .crew-mini{display:flex;align-items:flex-end;gap:2px;margin-top:18px;}
+
+h2.q{font-family:var(--serif);font-size:20px;font-weight:700;margin:0 0 14px;line-height:1.35;display:flex;align-items:baseline;gap:10px;}
+h2.q .n{font-family:var(--serif);color:var(--accent);font-size:20px;font-weight:700;}
+.lead{font-size:14px;color:var(--muted);margin:-4px 0 20px;line-height:1.6;}
+.block{margin-bottom:30px;}
+
+/* 드롭다운 */
+.dd{border:1px solid var(--hair);border-radius:14px;overflow:hidden;background:var(--card);}
+.dd-head{
+  width:100%;display:flex;justify-content:space-between;align-items:center;
+  padding:15px 16px;border:0;background:var(--card);font-weight:700;font-size:16px;
+}
+.dd-head .ph{color:var(--muted);font-weight:500;}
+.dd-head .chev{width:12px;height:12px;border-right:2px solid var(--accent);border-bottom:2px solid var(--accent);transform:rotate(45deg) translate(-3px,-3px);transition:transform .2s;}
+.dd.open .dd-head .chev{transform:rotate(225deg);}
+.dd-list{display:none;border-top:1px solid var(--hair);}
+.dd.open .dd-list{display:block;}
+.dd-opt{
+  width:100%;text-align:left;border:0;border-bottom:1px solid var(--hair);background:var(--card);
+  padding:14px 16px;font-weight:500;font-size:15px;display:flex;justify-content:space-between;align-items:center;
+}
+.dd-opt:last-child{border-bottom:0;}
+.dd-opt:hover{background:var(--accent-mist);}
+.dd-opt .em{font-size:12px;color:var(--muted);}
+
+/* 시간 */
+.time{display:grid;grid-template-columns:1fr auto 1fr auto;align-items:center;gap:10px;}
+.time select,.field{
+  appearance:none;-webkit-appearance:none;width:100%;
+  border:1px solid var(--hair);border-radius:14px;background:var(--card);
+  padding:12px 14px;font-family:var(--serif);font-size:24px;font-weight:700;text-align:center;
+}
+.time .u{font-family:var(--serif);font-size:18px;font-weight:700;color:var(--muted);}
+.field{font-family:var(--sans);font-size:15px;text-align:left;font-weight:500;}
+.opt-label{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;margin:16px 0 8px;color:var(--muted);}
+.opt-label .tag{background:var(--accent-mist);color:var(--accent-ink);border-radius:999px;padding:2px 8px;font-size:11px;font-weight:700;}
+
+/* 버튼 */
+.btn{
+  border:0;border-radius:999px;padding:16px 18px;font-weight:700;font-size:16px;
+  background:var(--accent-ink);color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:background .15s;
+}
+.btn:hover{background:#A9391A;}
+.btn svg path{stroke:currentColor;}
+.btn.ghost{background:var(--card);color:var(--ink);border:1px solid var(--hair);}
+.btn.ghost:hover{background:var(--accent-mist);}
+.btn:disabled{background:#E9E3DB;color:#8C847B;cursor:not-allowed;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.btn.sm{padding:12px 10px;font-size:14px;font-weight:500;}
+
+/* 참여자 */
+.person{margin-bottom:12px;}
+.p-row{display:grid;grid-template-columns:44px minmax(0,1fr) minmax(0,1.3fr);gap:8px;align-items:stretch;}
+.avatar{display:flex;align-items:flex-end;justify-content:center;padding-bottom:2px;}
+.ch{display:block;overflow:visible;}
+.p-name{
+  border:1px solid var(--hair);border-radius:14px;padding:12px;font-size:16px;font-weight:700;
+  width:100%;background:var(--card);text-align:center;
+}
+.p-name::placeholder{color:var(--accent-ink);font-weight:500;}
+.p-st{
+  border:1px solid var(--hair);border-radius:14px;background:var(--card);display:flex;align-items:center;
+  justify-content:space-between;padding:6px 6px 6px 12px;gap:6px;min-width:0;
+}
+.p-st .lbl{font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.p-st .lbl.empty{color:var(--muted);font-weight:500;}
+.p-st .pick{flex:none;border:0;background:var(--accent-mist);color:var(--accent-ink);border-radius:999px;font-weight:700;font-size:13px;padding:7px 11px;}
+.person.open .p-st{border-color:var(--accent);border-bottom-left-radius:0;border-bottom-right-radius:0;}
+.picker{
+  margin-left:calc(60px + (100% - 60px) / 2.3);
+  border:1px solid var(--accent);border-top:0;border-radius:0 0 14px 14px;overflow:hidden;background:var(--card);
+}
+.search{display:flex;align-items:center;gap:8px;padding:9px 10px;border-bottom:1px solid var(--hair);}
+.search svg{width:16px;height:16px;flex:none;color:var(--muted);}
+.search input{border:0;outline:0;width:100%;font-size:14px;padding:3px 0;background:transparent;}
+.st-list{max-height:196px;overflow-y:auto;}
+.st-item{
+  width:100%;border:0;border-bottom:1px solid var(--hair);background:var(--card);text-align:left;
+  padding:10px;display:flex;flex-wrap:wrap;align-items:center;gap:4px;font-weight:500;font-size:14px;
+}
+.st-item:last-child{border-bottom:0;}
+.st-item:hover,.st-item:focus-visible{background:var(--accent-mist);}
+.st-item .nm{margin-right:4px;}
+.st-empty{padding:16px 10px;font-size:13px;color:var(--muted);}
+.badge{
+  display:inline-flex;align-items:center;justify-content:center;flex:none;
+  width:22px;height:22px;border-radius:50%;
+  font-family:var(--sans);font-size:12px;font-weight:700;line-height:1;letter-spacing:-.02em;
+}
+.badge.two{font-size:8.5px;letter-spacing:-.06em;}
+.count{display:grid;grid-template-columns:52px 1fr 52px;border:1px solid var(--hair);border-radius:999px;overflow:hidden;margin-top:8px;background:var(--card);}
+.count button{border:0;background:transparent;font-size:22px;color:var(--accent-ink);}
+.count button:hover{background:var(--accent-mist);}
+.count button:disabled{color:#C9C0B6;background:transparent;cursor:not-allowed;}
+.count span{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;padding:13px 0;}
+
+/* 추천 */
+.rec{border-radius:24px;background:var(--card);border:1px solid var(--hair);padding:20px 20px 22px;margin-bottom:22px;position:relative;overflow:hidden;}
+.rec::after{content:"";position:absolute;right:-60px;top:-60px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(217,81,44,.16),transparent 70%);}
+.rec .st{font-family:var(--serif);font-weight:700;font-size:42px;line-height:1.1;margin:12px 0 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:relative;}
+.rec .st .badge{width:32px;height:32px;font-size:16px;}
+.rec .st .badge.two{font-size:11px;}
+.rec .who{display:flex;flex-wrap:wrap;gap:6px;position:relative;}
+.rec .who span{background:var(--paper);border:1px solid var(--hair);border-radius:999px;padding:3px 10px 3px 5px;font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:5px;}
+.list{border:1px solid var(--hair);border-radius:20px;overflow:hidden;background:var(--card);}
+.list-h{padding:16px 16px 12px;font-family:var(--serif);font-weight:700;font-size:18px;display:flex;justify-content:space-between;align-items:baseline;}
+.list-h small{font-family:var(--sans);font-size:12px;font-weight:500;color:var(--muted);}
+.place{padding:14px 16px;border-top:1px solid var(--hair);display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;}
+.place.sel{background:var(--accent-mist);}
+.place b{font-size:16px;display:block;font-weight:700;}
+.place em{font-style:normal;font-size:12px;color:var(--muted);}
+.pl-btns{display:flex;gap:6px;}
+.mini{border:1px solid var(--hair);background:var(--card);border-radius:999px;padding:7px 12px;font-weight:500;font-size:13px;text-decoration:none;color:var(--ink);}
+.mini:hover{border-color:var(--accent);}
+.mini.on{background:var(--accent-ink);border-color:var(--accent-ink);color:#fff;font-weight:700;}
+.hint{font-size:12px;color:var(--muted);margin:12px 2px 0;line-height:1.6;}
+
+/* 확정 */
+.done-wrap{flex:1;display:flex;flex-direction:column;justify-content:center;}
+.crew{display:flex;align-items:flex-end;gap:4px;margin:14px 0 16px;}
+.crew .ch:nth-child(even){transform:translateY(-8px) rotate(4deg);}
+.crew .ch:nth-child(odd){transform:rotate(-4deg);}
+.done-msg{font-family:var(--serif);font-weight:700;font-size:36px;line-height:1.2;margin:0 0 10px;}
+.done-sub{font-size:14px;color:var(--muted);margin:0 0 26px;display:flex;align-items:center;gap:6px;}
+.ticket{border:1px solid var(--hair);border-radius:24px;overflow:hidden;background:var(--card);box-shadow:0 20px 40px -28px rgba(80,50,30,.45);}
+.ticket-top{padding:20px 20px 18px;border-bottom:1px dashed #D8CEC3;position:relative;}
+.ticket-top .st{font-family:var(--serif);font-weight:700;font-size:32px;margin-top:8px;}
+.ticket-top .pl{font-weight:500;font-size:16px;margin-top:2px;color:var(--muted);}
+.ticket-bot{padding:16px 20px 20px;display:grid;grid-template-columns:auto 1fr;gap:8px 16px;font-size:14px;margin:0;}
+.ticket-bot dt{color:var(--muted);}
+.ticket-bot dd{margin:0;font-weight:700;}
+
+/* 경로 */
+.acc{border:1px solid var(--hair);border-radius:18px;margin-bottom:10px;overflow:hidden;background:var(--card);}
+.acc-h{width:100%;border:0;background:var(--card);display:flex;align-items:center;justify-content:space-between;padding:10px 12px 10px 12px;}
+.acc-h .nm{font-weight:700;font-size:16px;display:flex;align-items:center;gap:10px;}
+.acc-h .from{font-size:12px;font-weight:500;color:var(--muted);}
+.acc-h .tg{border-radius:999px;padding:6px 12px;font-weight:700;font-size:12px;background:var(--accent-mist);color:var(--accent-ink);}
+.acc.open .acc-h{border-bottom:1px solid var(--hair);}
+.acc.open .acc-h .tg{background:var(--accent-ink);color:#fff;}
+.acc-b{display:none;}
+.acc.open .acc-b{display:block;}
+.map{display:block;width:100%;height:auto;}
+.route{padding:12px 14px;border-top:1px solid var(--hair);display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-weight:700;font-size:14px;}
+.route .arrow{display:flex;flex-direction:column;align-items:center;font-size:11px;color:var(--accent-ink);margin:0 4px;}
+.route .arrow svg{width:46px;height:10px;}
+.route .meta{width:100%;font-size:12px;font-weight:500;color:var(--muted);}
+
+.empty-state{text-align:center;padding:40px 10px;color:var(--muted);}
+
+.toast{
+  position:absolute;left:50%;bottom:110px;transform:translate(-50%,20px);opacity:0;pointer-events:none;
+  background:var(--ink);color:#fff;padding:11px 18px;border-radius:999px;font-size:14px;font-weight:500;white-space:nowrap;
+  transition:opacity .2s,transform .2s;
+}
+.toast.show{opacity:1;transform:translate(-50%,0);}
+@media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important;} }
+</style>
+</head>
+<body>
+
+<aside class="side" aria-label="화면 바로가기">
+  <div class="eyebrow">모이자 · UI 프로토타입</div>
+  <h1>모두에게 공평한 중간 지점</h1>
+  <p>오른쪽 화면을 직접 눌러보거나, 아래에서 보고 싶은 단계를 골라보세요.</p>
+  <ol id="jump"></ol>
+</aside>
+
+<main class="phone" aria-live="polite">
+  <header class="bar">
+    <button class="icon-btn" id="backBtn" aria-label="뒤로">
+      <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M9 2 4 7l5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>뒤로
+    </button>
+    <div class="logo" aria-label="모이자">
+      <svg viewBox="0 0 26 26" aria-hidden="true"><path d="M5 6 13 12.5M21 6 13 12.5M13 21v-8.5" stroke="#E7C3B4" stroke-width="1.6"/><circle cx="5" cy="6" r="3" fill="#D9512C"/><circle cx="21" cy="6" r="3" fill="#D9512C"/><circle cx="13" cy="21" r="3" fill="#D9512C"/><circle cx="13" cy="12.5" r="3.4" fill="#2B2A28"/></svg>
+      모이자
+    </div>
+    <button class="icon-btn home" id="homeBtn" aria-label="처음으로">
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11 12 4l8 7M6.5 9.5V20h11V9.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </header>
+  <section class="screen" id="screen"></section>
+  <footer class="foot" id="foot"></footer>
+  <div class="toast" id="toast" role="status"></div>
+</main>
+
+<script>
+/* ---------------- 데이터 ---------------- */
+const LINES = {
+  // [색, 원 안 표기, 글자색, 정식 이름]
+  "1":["#0052A4","1","#fff","1호선"],"2":["#00A84D","2","#fff","2호선"],"3":["#EF7C1C","3","#fff","3호선"],
+  "4":["#00A5DE","4","#fff","4호선"],"5":["#996CAC","5","#fff","5호선"],"6":["#CD7C2F","6","#fff","6호선"],
+  "7":["#747F00","7","#fff","7호선"],"8":["#E6186C","8","#fff","8호선"],"9":["#BDB092","9","#000","9호선"],
+  "신분당":["#D4003B","신분","#fff","신분당선"],"수인분당":["#F5A200","수인","#000","수인분당선"],
+  "경의중앙":["#77C4A3","경의","#000","경의중앙선"],"공항":["#0090D2","공항","#fff","공항철도"]
+};
+const STATIONS = [
+  ["가락시장",["3","8"],37.4927,127.1183],["가산디지털단지",["1","7"],37.4815,126.8826],["강남",["2","신분당"],37.4979,127.0276],
+  ["강남구청",["7","수인분당"],37.5172,127.0412],["건대입구",["2","7"],37.5404,127.0692],["고속터미널",["3","7","9"],37.5049,127.0049],
+  ["공덕",["5","6","경의중앙","공항"],37.5443,126.9516],["광화문",["5"],37.5710,126.9768],["교대",["2","3"],37.4934,127.0142],
+  ["구로디지털단지",["2"],37.4852,126.9015],["군자",["5","7"],37.5571,127.0794],["김포공항",["5","9","공항"],37.5624,126.8013],
+  ["노량진",["1","9"],37.5142,126.9424],["노원",["4","7"],37.6551,127.0613],["당산",["2","9"],37.5343,126.9022],
+  ["동대문역사문화공원",["2","4","5"],37.5655,127.0074],["디지털미디어시티",["6","경의중앙","공항"],37.5770,126.8999],
+  ["망원",["6"],37.5560,126.9101],["명동",["4"],37.5609,126.9863],["사당",["2","4"],37.4765,126.9816],["삼각지",["4","6"],37.5347,126.9731],
+  ["서울역",["1","4","경의중앙","공항"],37.5547,126.9707],["선릉",["2","수인분당"],37.5045,127.0490],["성수",["2"],37.5446,127.0559],
+  ["시청",["1","2"],37.5657,126.9772],["신도림",["1","2"],37.5088,126.8913],["신림",["2"],37.4842,126.9297],["신용산",["4"],37.5290,126.9680],
+  ["신촌",["2"],37.5552,126.9369],["압구정",["3"],37.5270,127.0284],["여의도",["5","9"],37.5217,126.9243],["연신내",["3","6"],37.6190,126.9210],
+  ["왕십리",["2","5","경의중앙","수인분당"],37.5612,127.0371],["용산",["1","경의중앙"],37.5298,126.9648],["이태원",["6"],37.5345,126.9943],
+  ["잠실",["2","8"],37.5133,127.1001],["종로3가",["1","3","5"],37.5704,126.9921],["충무로",["3","4"],37.5612,126.9942],
+  ["합정",["2","6"],37.5496,126.9139],["홍대입구",["2","경의중앙","공항"],37.5572,126.9245],["혜화",["4"],37.5822,127.0019]
+].map(([name,lines,lat,lng])=>({name,lines,lat,lng})).sort((a,b)=>a.name.localeCompare(b.name,"ko"));
+const ST = Object.fromEntries(STATIONS.map(s=>[s.name,s]));
+
+const PURPOSES = [
+  {id:"meal",label:"회식 / 식사",em:"🍖",places:[["고깃집","숯불구이"],["일식당","스시 · 덮밥"],["중식당","코스 · 단체석"]]},
+  {id:"study",label:"회의 / 스터디",em:"📚",places:[["스터디카페","단체룸 6인"],["회의실 대여","화이트보드 · 빔"],["북카페","조용한 2층"]]},
+  {id:"play",label:"오락 / 게임",em:"🎳",places:[["보드게임카페","시간제"],["볼링장","레인 예약"],["노래방","대형룸"]]}
+];
+
+/* ---------------- 캐릭터 ---------------- */
+const CHARS = {
+  gam:{name:"감이",color:"#F2541B",face:[100,124]},
+  taek:{name:"택이",color:"#FFA53A",face:[100,66]},
+  dil:{name:"딜이",color:"#FF7A1A",face:[114,100]}
+};
+const SLOT = ["gam","taek","dil"];
+const CHEEK='<ellipse cx="-32" cy="16" rx="10" ry="6" fill="#FFC9B5"/><ellipse cx="32" cy="16" rx="10" ry="6" fill="#FFC9B5"/>';
+const EYES='<circle cx="-18" r="7"/><circle cx="-20" cy="-2.5" r="2.4" fill="#fff"/><circle cx="18" r="7"/><circle cx="16" cy="-2.5" r="2.4" fill="#fff"/>';
+const FACES = {
+  basic: CHEEK+EYES+'<path d="M-12 22 L2 22 Q13 21 18 10" fill="none" stroke="#000" stroke-width="7" stroke-linecap="round"/>',
+  happy: CHEEK+'<path d="M-25 3 Q-18 -8 -11 3M11 3 Q18 -8 25 3" fill="none" stroke="#000" stroke-width="5" stroke-linecap="round"/><path d="M-11 15 Q0 34 11 15 Z" stroke="#000" stroke-width="3" stroke-linejoin="round"/><path d="M-5 25 Q0 30 5 25" fill="#FF8FA3"/>',
+  lost: CHEEK+EYES+'<ellipse cx="2" cy="23" rx="5" ry="6"/><path d="M40 -26 Q48 -14 44 -8 Q38 -4 35 -11 Q34 -18 40 -26 Z" fill="#8FD3FF" stroke="#000" stroke-width="3"/>'
+};
+function charBody(k){
+  const c=CHARS[k].color;
+  if(k==="dil") return `<ellipse cx="88" cy="196" rx="14" ry="7"/><ellipse cx="140" cy="194" rx="14" ry="7"/><path d="M58 36 Q56 24 70 24 L96 24 C150 24 180 62 180 106 C180 152 146 190 94 190 L70 190 Q56 190 58 178 Z" fill="${c}" stroke="#000" stroke-width="6" stroke-linejoin="round"/><path d="M118 25 Q112 8 128 9" fill="none" stroke="#000" stroke-width="5" stroke-linecap="round"/>`;
+  if(k==="taek"){const sh='<rect x="16" y="40" width="168" height="58" rx="29" transform="rotate(-6 100 69)"/><rect x="64" y="70" width="72" height="122" rx="30"/>';
+    return `<ellipse cx="84" cy="198" rx="14" ry="7"/><ellipse cx="118" cy="198" rx="14" ry="7"/><g fill="${c}" stroke="#000" stroke-width="10" stroke-linejoin="round">${sh}</g><g fill="${c}">${sh}</g><path d="M176 12 L179 21 L188 24 L179 27 L176 36 L173 27 L164 24 L173 21 Z" fill="#FFE14D" stroke="#000" stroke-width="3" stroke-linejoin="round"/>`;}
+  return `<ellipse cx="54" cy="196" rx="14" ry="7"/><ellipse cx="146" cy="196" rx="14" ry="7"/><path d="M100 22 C108 22 112 27 115 34 L179 174 Q184 190 168 190 L128 190 Q100 158 72 190 L32 190 Q16 190 21 174 L85 34 C88 27 92 22 100 22 Z" fill="${c}" stroke="#000" stroke-width="6" stroke-linejoin="round"/><path d="M100 58 L112 88 L88 88 Z" fill="#fff" stroke="#000" stroke-width="5" stroke-linejoin="round"/><path d="M100 25 Q99 16 103 13" fill="none" stroke="#000" stroke-width="4" stroke-linecap="round"/><path d="M103 16 Q118 2 132 10 Q118 24 103 16 Z" fill="#45A34B" stroke="#000" stroke-width="4" stroke-linejoin="round"/>`;
+}
+function charSVG(i,mood="basic",size=40){
+  const k=SLOT[i];
+  if(!k){ // 4번째부터는 동그란 기본 친구
+    return `<svg class="ch" viewBox="0 0 200 215" width="${size}" height="${size*1.075}" aria-hidden="true"><ellipse cx="80" cy="196" rx="14" ry="7"/><ellipse cx="120" cy="196" rx="14" ry="7"/><circle cx="100" cy="112" r="80" fill="#FFD2B0" stroke="#000" stroke-width="6"/><g transform="translate(100 108)">${FACES[mood]}</g></svg>`;
+  }
+  const [fx,fy]=CHARS[k].face;
+  return `<svg class="ch" viewBox="0 0 200 215" width="${size}" height="${size*1.075}" aria-hidden="true">${charBody(k)}<g transform="translate(${fx} ${fy})">${FACES[mood]}</g></svg>`;
+}
+
+/* ---------------- 상태 ---------------- */
+const S = {
+  screen:"home", history:[], purpose:null, ddOpen:false,
+  date:"", hour:"19", min:"00",
+  people:[{name:"감이",st:"노량진",open:false},{name:"택이",st:"이태원",open:false},{name:"딜이",st:"합정",open:false}],
+  q:"", rec:null, place:null, confirmed:null, routeOpen:{}
+};
+const SCREENS = [["home","약속 만들기"],["people","출발지 입력"],["rec","추천 장소"],["done","약속 확정"],["routes","나의 경로"]];
+
+const $ = s=>document.querySelector(s);
+const screenEl = $("#screen"), footEl = $("#foot");
+const esc = s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const badge = l=>{const [c,t,fg,full]=LINES[l];return `<span class="badge${t.length>1?" two":""}" style="background:${c};color:${fg}" title="${full}" aria-label="${full}">${t}</span>`;};
+const badges = st=>ST[st].lines.map(badge).join("");
+const nameOf = (p,i)=>p.name.trim()||`참여자 ${i+1}`;
+let toastT;
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),1800);}
+
+/* ---------------- 계산 ---------------- */
+function km(a,b){return Math.hypot((a.lat-b.lat)*111,(a.lng-b.lng)*88);}
+function computeRec(){
+  const pts=S.people.map(p=>ST[p.st]);
+  const c={lat:pts.reduce((s,p)=>s+p.lat,0)/pts.length,lng:pts.reduce((s,p)=>s+p.lng,0)/pts.length};
+  let best=STATIONS[0],bd=Infinity;
+  for(const s of STATIONS){
+    // 중심과의 거리 + 가장 먼 사람의 이동거리를 함께 고려
+    const d=km(s,c)+0.25*Math.max(...pts.map(p=>km(p,s)));
+    if(d<bd){bd=d;best=s;}
+  }
+  return best.name;
+}
+function routeInfo(from,to){
+  const a=ST[from],b=ST[to],d=km(a,b);
+  const common=a.lines.find(l=>b.lines.includes(l));
+  const stops=Math.max(1,Math.round(d/1.25));
+  const mins=Math.max(2,Math.round(d*2.4+(common?2:7)));
+  return {d,common,line:common||a.lines[0],stops,mins,transfer:!common};
+}
+
+/* ---------------- 네비 ---------------- */
+function go(s){ if(s!==S.screen){S.history.push(S.screen);S.screen=s;} render(); screenEl.scrollTop=0; }
+function back(){ if(S.history.length){S.screen=S.history.pop();render();} }
+function home(){ S.history=[];S.screen="home";render(); }
+$("#backBtn").onclick=back; $("#homeBtn").onclick=home;
+
+function jumpTo(id){
+  if(["rec","done","routes"].includes(id)){
+    if(S.people.some(p=>!p.st)) S.people.forEach((p,i)=>{if(!p.st)p.st=["노량진","이태원","합정"][i%3];});
+    if(!S.purpose) S.purpose="meal";
+    S.rec=computeRec();
+  }
+  if(["done","routes"].includes(id)){
+    if(S.place==null) S.place=0;
+    S.confirmed={purpose:S.purpose,st:S.rec,place:S.place,date:S.date,hour:S.hour,min:S.min};
+  }
+  S.history=SCREENS.slice(0,SCREENS.findIndex(x=>x[0]===id)).map(x=>x[0]);
+  S.screen=id; render(); screenEl.scrollTop=0;
+}
+
+/* ---------------- 화면 ---------------- */
+function render(){
+  $("#backBtn").hidden = S.screen==="home";
+  $("#homeBtn").hidden = S.screen==="home";
+  ({home:vHome,people:vPeople,rec:vRec,done:vDone,routes:vRoutes})[S.screen]();
+  $("#jump").innerHTML = SCREENS.map(([id,l],i)=>`<li><button data-j="${id}" aria-current="${S.screen===id}"><span class="no">${i+1}</span>${l}</button></li>`).join("");
+  document.querySelectorAll("[data-j]").forEach(b=>b.onclick=()=>jumpTo(b.dataset.j));
+}
+
+function vHome(){
+  const p=PURPOSES.find(x=>x.id===S.purpose);
+  const hours=[...Array(24)].map((_,i)=>String(i).padStart(2,"0"));
+  const mins=["00","10","20","30","40","50"];
+  screenEl.innerHTML=`
+    <div class="hero">
+      <div class="eyebrow">새 약속 만들기</div>
+      <h1>오늘은<br>어디서 모일까요?</h1>
+      <p>목적과 시간만 정하면, 모두가 비슷하게 걸리는 역을 찾아드려요.</p>
+      <div class="crew-mini">${[0,1,2].map(i=>charSVG(i,"basic",40)).join("")}</div>
+    </div>
+    <div class="block">
+      <h2 class="q"><span class="n">1</span>만남 목적을 정해주세요</h2>
+      <div class="dd ${S.ddOpen?"open":""}">
+        <button class="dd-head" id="ddHead" aria-expanded="${S.ddOpen}">
+          <span class="${p?"":"ph"}">${p?p.label:"목적 선택"}</span><span class="chev" aria-hidden="true"></span>
+        </button>
+        <div class="dd-list">
+          ${PURPOSES.map(x=>`<button class="dd-opt" data-p="${x.id}"><span>${x.label}</span><span class="em">${x.places.map(q=>q[0]).slice(0,2).join(" · ")}</span></button>`).join("")}
+        </div>
+      </div>
+    </div>
+    <div class="block">
+      <h2 class="q"><span class="n">2</span>도착 시간을 정해주세요</h2>
+      <div class="time">
+        <select id="hh" aria-label="시">${hours.map(h=>`<option ${h===S.hour?"selected":""}>${h}</option>`).join("")}</select><span class="u">시</span>
+        <select id="mm" aria-label="분">${mins.map(m=>`<option ${m===S.min?"selected":""}>${m}</option>`).join("")}</select><span class="u">분</span>
+      </div>
+      <label class="opt-label" for="dt">날짜 <span class="tag">선택</span></label>
+      <input type="date" id="dt" class="field" value="${S.date}">
+    </div>`;
+  footEl.innerHTML=`
+    <button class="btn" id="next" ${p?"":"disabled"}>출발지 정하러 가기</button>
+    <div class="row2">
+      <button class="btn ghost sm" id="save">임시저장</button>
+      <button class="btn ghost sm" id="mine">내 약속 확인하기</button>
+    </div>`;
+  $("#ddHead").onclick=()=>{S.ddOpen=!S.ddOpen;vHome();};
+  document.querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>{S.purpose=b.dataset.p;S.ddOpen=false;vHome();});
+  $("#hh").onchange=e=>S.hour=e.target.value;
+  $("#mm").onchange=e=>S.min=e.target.value;
+  $("#dt").onchange=e=>S.date=e.target.value;
+  $("#next").onclick=()=>go("people");
+  $("#save").onclick=()=>toast("임시저장했어요");
+  $("#mine").onclick=()=>S.confirmed?go("done"):toast("아직 확정된 약속이 없어요");
+}
+
+function stationListHTML(){
+  const q=S.q.trim();
+  const list=STATIONS.filter(s=>!q||s.name.includes(q));
+  if(!list.length) return `<div class="st-empty">'${esc(q)}'에 맞는 서울 시내 역이 없어요. 역 이름을 다시 확인해주세요.</div>`;
+  return list.map(s=>`<button class="st-item" data-st="${s.name}"><span class="nm">${s.name}역</span>${badges(s.name)}</button>`).join("");
+}
+
+function vPeople(){
+  screenEl.innerHTML=`
+    <div class="eyebrow" style="margin-bottom:10px">참여자</div>
+    <h2 class="q" style="font-size:26px">누가, 어디서 출발하나요?</h2>
+    <p class="lead">출발지는 서울 시내 지하철역만 고를 수 있어요.</p>
+    ${S.people.map((p,i)=>`
+      <div class="person ${p.open?"open":""}" data-i="${i}">
+        <div class="p-row">
+          <span class="avatar">${charSVG(i,"basic",40)}</span>
+          <input class="p-name" data-name="${i}" value="${esc(p.name)}" placeholder="이름 입력" aria-label="${i+1}번째 참여자 이름">
+          <div class="p-st">
+            <span class="lbl ${p.st?"":"empty"}">${p.st?`${p.st}역`:"출발지"}</span>
+            <button class="pick" data-pick="${i}" aria-expanded="${p.open}">${p.st?"변경":"선택"}</button>
+          </div>
+        </div>
+        ${p.open?`<div class="picker">
+          <div class="search">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="m13 13 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <input id="q" placeholder="역 이름 검색" value="${esc(S.q)}" aria-label="역 검색">
+          </div>
+          <div class="st-list" id="stList">${stationListHTML()}</div>
+        </div>`:""}
+      </div>`).join("")}
+    <div class="count">
+      <button id="minus" aria-label="인원 줄이기" ${S.people.length<=2?"disabled":""}>−</button>
+      <span>인원 ${S.people.length}명</span>
+      <button id="plus" aria-label="인원 추가" ${S.people.length>=8?"disabled":""}>+</button>
+    </div>`;
+  const ready=S.people.every(p=>p.st);
+  footEl.innerHTML=`<button class="btn" id="find" ${ready?"":"disabled"}>${ready?"중간 장소 찾기":`출발지를 모두 골라주세요 (${S.people.filter(p=>p.st).length}/${S.people.length})`}</button>`;
+
+  document.querySelectorAll("[data-name]").forEach(inp=>inp.oninput=e=>S.people[+inp.dataset.name].name=e.target.value);
+  document.querySelectorAll("[data-pick]").forEach(b=>b.onclick=()=>{
+    const i=+b.dataset.pick, was=S.people[i].open;
+    S.people.forEach(p=>p.open=false); S.people[i].open=!was; S.q=""; vPeople();
+    if(!was) $("#q")?.focus();
+  });
+  const bindList=()=>document.querySelectorAll("[data-st]").forEach(b=>b.onclick=()=>{
+    const i=S.people.findIndex(p=>p.open); S.people[i].st=b.dataset.st; S.people[i].open=false; S.q=""; vPeople();
+  });
+  bindList();
+  const q=$("#q"); if(q) q.oninput=e=>{S.q=e.target.value;$("#stList").innerHTML=stationListHTML();bindList();};
+  $("#plus").onclick=()=>{S.people.push({name:"",st:null,open:false});vPeople();};
+  $("#minus").onclick=()=>{S.people.pop();vPeople();};
+  $("#find").onclick=()=>{S.rec=computeRec();S.place=null;go("rec");};
+}
+
+function placeName(i){const p=PURPOSES.find(x=>x.id===(S.purpose||"meal"));return `${S.rec} ${p.places[i][0]}`;}
+
+function vRec(){
+  const p=PURPOSES.find(x=>x.id===(S.purpose||"meal"));
+  screenEl.innerHTML=`
+    <p class="lead" style="margin:0 0 14px">여기서 모이면 다들 비슷하게 걸려요.</p>
+    <div class="rec">
+      <div class="eyebrow">추천역</div>
+      <div class="st">${S.rec}역 ${badges(S.rec)}</div>
+      <div class="who">${S.people.map((x,i)=>`<span>${charSVG(i,"basic",20)}${esc(nameOf(x,i))} ${routeInfo(x.st,S.rec).mins}분</span>`).join("")}</div>
+    </div>
+    <div class="list">
+      <div class="list-h">추천 만남 장소 <small>${p.label}</small></div>
+      ${p.places.map((pl,i)=>`
+        <div class="place ${S.place===i?"sel":""}">
+          <div><b>${S.rec} ${pl[0]}</b><em>${pl[1]} · 역에서 도보 ${3+i*2}분</em></div>
+          <div class="pl-btns">
+            <a class="mini" href="https://map.kakao.com/?q=${encodeURIComponent(S.rec+"역 "+pl[0])}" target="_blank" rel="noopener">보기</a>
+            <button class="mini ${S.place===i?"on":""}" data-sel="${i}" aria-pressed="${S.place===i}">${S.place===i?"선택됨":"선택"}</button>
+          </div>
+        </div>`).join("")}
+    </div>
+    <p class="hint">'보기'를 누르면 카카오맵에서 장소 정보를 볼 수 있어요. 앱으로 돌아오면 이 화면이 그대로 남아 있어요.</p>`;
+  footEl.innerHTML=`<button class="btn" id="conf" ${S.place==null?"disabled":""}>${S.place==null?"장소를 하나 골라주세요":"이 장소로 약속 확정하기"}</button>`;
+  document.querySelectorAll("[data-sel]").forEach(b=>b.onclick=()=>{S.place=+b.dataset.sel;vRec();});
+  $("#conf").onclick=()=>{S.confirmed={purpose:S.purpose,st:S.rec,place:S.place,date:S.date,hour:S.hour,min:S.min};go("done");};
+}
+
+function fmtDate(d){ if(!d) return "날짜 미정"; const [y,m,dd]=d.split("-"); const w="일월화수목금토"[new Date(d).getDay()]; return `${+m}월 ${+dd}일 (${w})`; }
+
+function vDone(){
+  const c=S.confirmed;
+  if(!c){screenEl.innerHTML=`<div class="empty-state">아직 확정된 약속이 없어요.<br>처음 화면에서 약속을 만들어보세요.</div>`;footEl.innerHTML="";return;}
+  const p=PURPOSES.find(x=>x.id===c.purpose);
+  screenEl.innerHTML=`
+    <div class="done-wrap">
+      <div class="crew">${S.people.slice(0,5).map((x,i)=>charSVG(i,"happy",64)).join("")}</div>
+      <p class="done-msg">일정이<br>확정되었어요!</p>
+      <p class="done-sub">
+        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3C6.5 3 2 6.6 2 11c0 2.8 1.8 5.3 4.6 6.7L5.5 21l4-2.6c.8.1 1.6.2 2.5.2 5.5 0 10-3.6 10-8S17.5 3 12 3z" fill="#FFE812" stroke="#000" stroke-width="1.8"/></svg>
+        카카오톡으로 약속 안내를 보냈어요
+      </p>
+      <div class="ticket">
+        <div class="ticket-top">
+          <div class="eyebrow">확정된 약속</div>
+          <div class="st">${c.st}역</div>
+          <div class="pl">${esc(placeName(c.place))}</div>
+        </div>
+        <dl class="ticket-bot">
+          <dt>시간</dt><dd>${fmtDate(c.date)} ${c.hour}시 ${c.min}분</dd>
+          <dt>목적</dt><dd>${p.label}</dd>
+          <dt>인원</dt><dd>${S.people.map((x,i)=>esc(nameOf(x,i))).join(", ")}</dd>
+        </dl>
+      </div>
+    </div>`;
+  footEl.innerHTML=`<button class="btn" id="myRoute">나의 경로 확인하기
+    <svg width="20" height="14" viewBox="0 0 20 14" aria-hidden="true"><path d="M1 7h16M12 2l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>`;
+  $("#myRoute").onclick=()=>go("routes");
+}
+
+function mapSVG(from,to){
+  const a=ST[from],b=ST[to];
+  const W=320,H=170,pad=40;
+  const minLat=Math.min(a.lat,b.lat),maxLat=Math.max(a.lat,b.lat),minLng=Math.min(a.lng,b.lng),maxLng=Math.max(a.lng,b.lng);
+  const sx=v=>maxLng===minLng?W/2:pad+(v-minLng)/(maxLng-minLng)*(W-pad*2);
+  const sy=v=>maxLat===minLat?H/2:pad+(maxLat-v)/(maxLat-minLat)*(H-pad*2);
+  const [x1,y1,x2,y2]=[sx(a.lng),sy(a.lat),sx(b.lng),sy(b.lat)];
+  const mx=(x1+x2)/2+(y2-y1)*.2, my=(y1+y2)/2-(x2-x1)*.2;
+  return `<svg class="map" viewBox="0 0 ${W} ${H}" role="img" aria-label="${from}역에서 ${to}역까지 경로">
+    <rect width="${W}" height="${H}" fill="#F9F6F1"/>
+    <path d="M-10 70 C 60 50, 90 105, 160 98 S 260 60, 330 72" fill="none" stroke="#CFC4B8" stroke-width="1.5"/>
+    <path d="M-10 112 C 70 100, 110 140, 180 132 S 280 100, 330 108" fill="none" stroke="#CFC4B8" stroke-width="1.5"/>
+    <path d="M${x1} ${y1} Q ${mx} ${my} ${x2} ${y2}" fill="none" stroke="#D9512C" stroke-width="3.5" stroke-dasharray="2 8" stroke-linecap="round"/>
+    <circle cx="${x1}" cy="${y1}" r="7" fill="#D9512C" stroke="#fff" stroke-width="3"/>
+    <circle cx="${x2}" cy="${y2}" r="8" fill="#fff" stroke="#2B2A28" stroke-width="2"/><circle cx="${x2}" cy="${y2}" r="3" fill="#D9512C"/>
+    <text x="${x1}" y="${y1+24}" text-anchor="middle" font-size="13" font-weight="700" fill="#C2441F" font-family="Noto Sans KR, sans-serif">출발</text>
+    <text x="${x2}" y="${y2-16}" text-anchor="middle" font-size="13" font-weight="700" fill="#C2441F" font-family="Noto Sans KR, sans-serif">도착</text>
+  </svg>`;
+}
+
+function vRoutes(){
+  const c=S.confirmed;
+  if(!c){vDone();return;}
+  screenEl.innerHTML=`
+    <div class="eyebrow" style="margin-bottom:10px">나의 경로</div>
+    <h2 class="q" style="font-size:26px">본인의 경로를 확인하세요</h2>
+    <p class="lead">${c.st}역 · ${c.hour}시 ${c.min}분 도착 기준이에요.</p>
+    ${S.people.map((p,i)=>{
+      const open=!!S.routeOpen[i], r=routeInfo(p.st,c.st), same=p.st===c.st;
+      return `<div class="acc ${open?"open":""}">
+        <button class="acc-h" data-acc="${i}" aria-expanded="${open}">
+          <span class="nm">${charSVG(i,open?"lost":"basic",34)}${esc(nameOf(p,i))} <span class="from">${p.st}역 출발</span></span>
+          <span class="tg">${open?"접기":"열기"}</span>
+        </button>
+        <div class="acc-b">
+          ${same?`<div class="route">이미 약속 장소가 있는 역에서 출발해요. 바로 ${esc(placeName(c.place))}으로 가면 돼요.</div>`:`
+          ${mapSVG(p.st,c.st)}
+          <div class="route">
+            ${p.st}역 ${badge(r.line)}
+            <span class="arrow">${r.mins}분<svg viewBox="0 0 46 10" aria-hidden="true"><path d="M1 5h42M38 1l5 4-5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+            ${c.st}역
+            <span class="meta">${r.stops}개 역 이동${r.transfer?" · 환승 1회":""} · ${(()=>{const t=((+c.hour*60+ +c.min-r.mins-5)%1440+1440)%1440;return `${Math.floor(t/60)}시 ${String(t%60).padStart(2,"0")}분`;})()}쯤 출발하면 여유 있어요</span>
+          </div>`}
+        </div>
+      </div>`;}).join("")}`;
+  footEl.innerHTML="";
+  document.querySelectorAll("[data-acc]").forEach(b=>b.onclick=()=>{const i=+b.dataset.acc;S.routeOpen[i]=!S.routeOpen[i];vRoutes();});
+}
+
+render();
+</script>
+</body>
+</html>
