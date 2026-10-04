@@ -3,7 +3,7 @@
 // name에는 끝의 '역'이 없다('서울역'도 '서울'). 화면은 copy.json의 '{name}역'으로 붙여 쓴다.
 
 // 호선 표시: [동그라미 안 글자, 노선 색, 글자 색]. 목록에 없는 호선은 이름 그대로 회색으로 보여준다.
-// 화면(join.js, participants.js)은 이 목록만 쓴다(lineBadge).
+// 화면(join.js, participants.js, route.js)은 이 목록만 쓴다(lineBadge).
 export const LINE_BADGES = {
   1: ['1', '#0052A4', '#fff'], 2: ['2', '#00A84D', '#fff'], 3: ['3', '#EF7C1C', '#fff'], 4: ['4', '#00A5DE', '#fff'],
   5: ['5', '#996CAC', '#fff'], 6: ['6', '#CD7C2F', '#fff'], 7: ['7', '#747F00', '#fff'], 8: ['8', '#E6186C', '#fff'],
