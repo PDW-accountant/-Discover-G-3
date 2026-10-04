@@ -236,6 +236,9 @@ input.p-name.invalid{border-color:#cf222e;}
 .mini{border:1px solid var(--hair);background:var(--card);border-radius:999px;padding:7px 12px;font-weight:500;font-size:13px;text-decoration:none;color:var(--ink);}
 .mini:hover{border-color:var(--accent);}
 .mini.on{background:var(--accent-ink);border-color:var(--accent-ink);color:#fff;font-weight:700;}
+.mini:disabled{opacity:.5;}
+/* 내 약속 목록 (#18): 상태 꼬리표(입력 받는 중/확정) */
+.my-meetings .place .train{display:inline-block;margin-bottom:4px;}
 
 /* ③ 추천 결과 — 참여자 칩을 누르면 경로 카드 (#53) */
 .rec .who>button{font-family:inherit;color:var(--ink);cursor:pointer;}

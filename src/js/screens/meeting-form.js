@@ -3,7 +3,7 @@
 // 문구는 lib/data.js의 t()로 읽는다.
 // 이번 구현(#19): 목적·도착 일시 입력. '링크로 입력받기'(방 만들기·링크 복사, FUNC-021)는 출발지 입력 화면(participants.js)에 있다.
 // 임시저장(FUNC-019, #17): 목적·날짜·시각이 바뀌면 0.5초 뒤 저장, [임시저장]은 바로 저장. 앱을 처음 열 때 저장된 내용이 있으면
-//   '이어서 입력할까요?'를 묻고, 이어서 하면 출발지 입력(참여자)까지 되살린다. 내 약속 확인하기(FUNC-020)는 아직 준비 중 안내.
+//   '이어서 입력할까요?'를 묻고, 이어서 하면 출발지 입력(참여자)까지 되살린다. [내 약속 확인하기]는 내 모임 목록(FUNC-020, #18).
 // 예시로 해보기(FUNC-004): data/demo.json 시나리오 버튼을 누르면 그 조건·참여자로 바로 추천 결과 화면을 연다. 시나리오가 없으면 숨긴다.
 // 화면 모양은 '모이자 UI 프로토타입2'를 따른다 (예시로 해보기는 프로토타입에 없어 기존 클래스로 아래쪽에 둔다).
 
@@ -15,6 +15,7 @@ import { characterNode } from '../lib/characters.js';
 import { PURPOSES } from '../config.js';
 import { render as renderParticipants } from './participants.js';
 import { render as renderResult } from './result.js';
+import { render as renderMyMeetings } from './my-meetings.js';
 
 const MINUTES = ['00', '10', '20', '30', '40', '50'];
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
@@ -227,7 +228,7 @@ export async function render(container, params = {}) {
     ];
     actions.push(el('div', { className: 'row2' }, [
       el('button', { type: 'button', className: 'btn ghost sm', textContent: t('meeting.save'), onclick: saveNow }),
-      el('button', { type: 'button', className: 'btn ghost sm', textContent: t('meeting.mine'), onclick: () => toast(t('meeting.mineSoon')) }),
+      el('button', { type: 'button', className: 'btn ghost sm', textContent: t('meeting.mine'), onclick: () => go(renderMyMeetings, container, {}, { back: { ...params, form: formValues() } }) }),
     ]));
     foot.replaceChildren(...actions);
   }

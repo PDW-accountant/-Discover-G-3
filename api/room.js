@@ -1,6 +1,8 @@
-// POST /api/room (방 만들기), GET /api/room?id= (방 읽기) (개발 B) — FUNC-021, FUNC-014, FUNC-023
+// POST /api/room (방 만들기), GET /api/room?id= (방 읽기), DELETE /api/room?id= (방 지우기) (개발 B) — FUNC-021, FUNC-014, FUNC-023, FUNC-020
 // POST: 무작위 10자 이상 id + host_token 생성, room:{id}에 purpose·arrival_time·created_at·host_token_hash·status 저장, 30일 만료.
 // GET: 방 정보 + 참여자 목록. host_token_hash는 돌려주지 않는다. 없거나 만료면 404.
+// DELETE: 총무 토큰(x-host-token 헤더)이 맞을 때만 입력 받는 중인 방을 지운다(내 약속 목록에서 삭제, #18). 확정된 방은 참여자가
+//   경로를 봐야 하므로 지우지 않는다(409 confirmed, 30일 뒤 만료).
 
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { isRedisConfigured, redis } from './_lib/redis.js';
@@ -140,8 +142,37 @@ async function readRoom(req, res) {
   });
 }
 
+// 방이 있는지·총무인지·확정 전인지 확인과 삭제를 한 번에 한다(사이에 확정되는 일이 없게).
+const DELETE_ROOM_SCRIPT = `
+if redis.call('EXISTS', KEYS[1]) == 0 then return 'not_found' end
+if redis.call('HGET', KEYS[1], 'host_token_hash') ~= ARGV[1] then return 'forbidden' end
+if redis.call('HGET', KEYS[1], 'status') == '확정' then return 'confirmed' end
+redis.call('DEL', KEYS[1])
+return 'ok'
+`;
+const DELETE_STATUS = { not_found: 404, forbidden: 403, confirmed: 409 };
+
+// DELETE /api/room?id= — 총무가 입력 받는 중인 방을 지운다(#18). 토큰은 주소가 아니라 헤더로 받는다.
+async function deleteRoom(req, res) {
+  const roomId = roomIdOf(req);
+  const token = req.headers?.['x-host-token'];
+  if (!roomId || typeof token !== 'string' || token.length < 8 || token.length > 256) return res.status(400).json({ error: 'invalid' });
+  if (!isRedisConfigured()) return res.status(503).json({ error: 'unavailable' });
+  let result;
+  try {
+    result = await redis(['EVAL', DELETE_ROOM_SCRIPT, '1', `room:${roomId}`, hashToken(token)]);
+  } catch (e) {
+    console.error('방 지우기 실패', e);
+    return res.status(503).json({ error: 'unavailable' });
+  }
+  if (result === 'ok') return res.status(200).json({ ok: true });
+  if (result in DELETE_STATUS) return res.status(DELETE_STATUS[result]).json({ error: result });
+  return res.status(503).json({ error: 'unavailable' });
+}
+
 export default async function handler(req, res) {
   if (req.method === 'POST') return createRoom(req, res);
   if (req.method === 'GET') return readRoom(req, res);
+  if (req.method === 'DELETE') return deleteRoom(req, res);
   res.status(501).json({ error: '아직 구현되지 않았습니다' });
 }

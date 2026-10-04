@@ -15,7 +15,7 @@ import { lineBadge, rareServiceNotices, searchStations } from '../lib/stations.j
 import { createShell, el, go } from '../lib/shell.js';
 import { characterNode } from '../lib/characters.js';
 import { createRoom, deleteParticipant, getRoom, getStatus, saveParticipant } from '../lib/api-client.js';
-import { clearDraft, getHostToken, saveDraftSoon, setHostToken } from '../lib/storage.js';
+import { addRoomMeeting, clearDraft, getHostToken, saveDraftSoon, setHostToken } from '../lib/storage.js';
 import { roomUrl } from '../lib/share-link.js';
 import { copyLink } from '../lib/share.js';
 import { MAX_PARTICIPANTS, MIN_PARTICIPANTS, NICKNAME_MAX_LENGTH, POLL_INTERVAL_MS, POLL_STOP_AFTER_MS } from '../config.js';
@@ -231,6 +231,8 @@ export async function render(container, params = {}) {
     }
     setHostToken(created.room_id, created.host_token);
     clearDraft(); // 방이 생기면 입력은 서버에 있으므로 임시저장(#17)을 지운다
+    // 내 약속 목록(#18)에 '입력 받는 중'으로 넣는다. 누르면 이 총무 화면(?room=)이 다시 열린다
+    addRoomMeeting({ room_id: created.room_id, purpose: params.request.purpose, arrival_time: params.request.arrival_time, url: created.join_url });
     roomId = created.room_id;
     hostToken = created.host_token;
     joinUrl = created.join_url;
