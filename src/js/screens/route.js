@@ -15,12 +15,11 @@ import { travelTime } from '../lib/transit.js';
 import { departureAdvice } from '../lib/departure.js';
 import { placeLink } from '../lib/places.js';
 import { drawRoute } from '../lib/map.js';
-import { lineBadge, rareServiceNotices } from '../lib/stations.js';
+import { rareServiceNotices } from '../lib/stations.js';
+import { expressLinesOf, routeSummary, stepList, trainKind } from '../lib/route-steps.js';
 import { getParticipantId } from '../lib/storage.js';
 import { createShell, el } from '../lib/shell.js';
 import { characterNode } from '../lib/characters.js';
-
-const ARROW_SVG = '<svg viewBox="0 0 46 10" aria-hidden="true"><path d="M1 5h42M38 1l5 4-5 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
 
 const pad = (n) => String(n).padStart(2, '0');
 
@@ -40,12 +39,6 @@ function linkFor(place, stationName) {
   } catch {
     return place.kakao_url || `https://map.kakao.com/link/search/${encodeURIComponent(`${stationName} ${place.name}`)}`;
   }
-}
-
-/** 급행이 다니는 노선(그래프 routes에 급행 계통이 있는 호선)이면 구간에 'express'/'local'. 급행이 없는 노선은 null(표시 안 함). */
-function trainKind(step, expressLines) {
-  if (step.express) return 'express';
-  return expressLines.has(step.line) ? 'local' : null;
 }
 
 /** 카카오맵에서 만남 역까지 길찾기(지도를 그리지 못했을 때). 좌표가 없으면 역 이름 검색. */
@@ -88,7 +81,7 @@ export function buildRouteInfo(confirmation, nickname, {
   }
   const computed = !sameStation && Number.isFinite(route?.minutes) && !route.is_estimated;
   const minutes = sameStation ? 0 : (computed ? route.minutes : person.m);
-  const expressLines = new Set((graph?.routes ?? []).filter((r) => r.express).map((r) => r.line));
+  const expressLines = expressLinesOf(graph);
   const steps = computed
     ? (route.steps ?? []).map((s) => ({
       line: s.line, train: trainKind(s, expressLines),
@@ -135,23 +128,6 @@ function formatArrival(value) {
   });
 }
 
-function badgeNode(line) {
-  const { label, background, color } = lineBadge(line);
-  return el('span', {
-    className: label.length > 1 ? 'badge two' : 'badge', textContent: label, title: `${line}`,
-    style: `background:${background};color:${color}`,
-  });
-}
-
-/** 호선 동그라미 옆 '급행'/'일반' 꼬리표. 급행이 없는 노선이면 없음. */
-function trainNodes(train) {
-  return train ? [el('span', { className: `train ${train}`, textContent: t(`route.${train}`) })] : [];
-}
-
-function stationLabel(station) {
-  return t('confirm.station', { name: station.name });
-}
-
 /** 펼친 칸의 내용: 지도 → 요약 → 구간 → 권장 출발 시각 → 만남 장소 */
 function routeBody(info) {
   const placeRow = info.place
@@ -179,24 +155,9 @@ function routeBody(info) {
     }));
   }
 
-  const arrow = el('span', { className: 'arrow', textContent: t('route.minutes', { minutes: info.minutes }) });
-  arrow.insertAdjacentHTML('beforeend', ARROW_SVG);
-  const meta = [t('route.total', { minutes: info.minutes })];
-  if (info.transfers !== null) meta.push(info.transfers ? t('route.transfers', { count: info.transfers }) : t('route.noTransfer'));
-  const summary = el('div', { className: 'route' }, [
-    stationLabel(info.from), ...(info.steps[0] ? [badgeNode(info.steps[0].line), ...trainNodes(info.steps[0].train)] : []), arrow, stationLabel(info.to),
-    el('span', { className: 'meta', textContent: meta.join(' · ') }),
-    ...(info.is_estimated ? [el('span', { className: 'est', textContent: t('route.estimated') })] : []),
-  ]);
-
-  const stepList = info.steps.length
-    ? el('ol', { className: 'steps' }, info.steps.map((s) => el('li', {}, [
-      badgeNode(s.line),
-      ...trainNodes(s.train),
-      el('span', { className: 'seg', textContent: t('route.step', { from: s.from.name, to: s.to.name }) }),
-      el('span', { className: 'min', textContent: t('route.minutes', { minutes: s.minutes }) }),
-    ])))
-    : null;
+  // 요약 줄·구간 목록은 추천 결과 화면의 경로 카드(#53)와 같이 lib/route-steps.js로 그린다
+  const summary = routeSummary(info);
+  const steps = stepList(info.steps);
 
   let departRow = null;
   if (info.departure) {
@@ -209,7 +170,7 @@ function routeBody(info) {
   }
 
   const notices = rareServiceNotices([info.from, info.to]).map((text) => el('p', { className: 'notice', textContent: text }));
-  return [mapBox, summary, ...notices, ...[stepList, departRow, placeRow].filter(Boolean)];
+  return [mapBox, summary, ...notices, ...[steps, departRow, placeRow].filter(Boolean)];
 }
 
 function showMessage(container, text) {
