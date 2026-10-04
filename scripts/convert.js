@@ -675,6 +675,35 @@ function buildPlaces(rows, bySlug, issues) {
   return out;
 }
 
+// 시연 시나리오 시트: 한 줄에 시나리오 하나. 참여자 칸은 "닉네임:역 이름"을 쉼표로 잇는다
+//   기대 1위 역·점수·단축 분은 손으로 계산해 적는다 (tests/recommend.test.js 가 계산 결과와 맞는지 확인한다)
+const DEMO_COUNT = 3; // 시연 시나리오 목표 개수 (CLAUDE.md 6장)
+function buildDemo(rows, index, candidates, issues) {
+  const scenarios = [];
+  for (const r of rows) {
+    const label = r['이름'] || r.id;
+    const purpose = PURPOSES[r['모임 종류']] ?? r['모임 종류'];
+    if (!candidates[purpose]) { issues.push(`시연 시나리오 모임 종류가 이상함: ${r['모임 종류']} (${label})`); continue; }
+    if (!/^\d{2}:\d{2}$/.test(r['도착 시각'] ?? '')) { issues.push(`시연 시나리오 도착 시각은 HH:MM 형식: ${r['도착 시각']} (${label})`); continue; }
+    const participants = [];
+    (r['참여자'] ?? '').split(',').map((x) => x.trim()).filter(Boolean).forEach((cell, i) => {
+      const [nickname, stationName = ''] = cell.split(':').map((x) => x.trim());
+      const s = index.find(stationName);
+      if (!s) issues.push(`역 이름 불일치(시연 시나리오 ${label}): ${stationName}`);
+      else participants.push({ participant_id: `${r.id}-${i + 1}`, nickname, origin_station_id: s.id });
+    });
+    if (participants.length < 3 || participants.length > 9) issues.push(`시연 시나리오 참여자는 3~9명: ${label} ${participants.length}명`);
+    const top = index.find(r['기대 1위 역'] ?? '');
+    if (!top || !candidates[purpose].includes(top.id)) { issues.push(`시연 시나리오 기대 1위 역이 ${purpose} 후보가 아님: ${r['기대 1위 역']} (${label})`); continue; }
+    scenarios.push({
+      id: r.id, name: label, purpose, arrival: r['도착 시각'], participants,
+      expected: { station_id: top.id, score: Number(r['기대 점수']), saved_minutes: Number(r['기대 단축 분']) },
+    });
+  }
+  if (scenarios.length < DEMO_COUNT) issues.warn(`시연 시나리오 ${scenarios.length}개 (목표 ${DEMO_COUNT}개)`);
+  return scenarios;
+}
+
 // ---------- 출처 ----------
 
 const SOURCES = [
@@ -686,6 +715,7 @@ const SOURCES = [
   { name: '국토교통부 TAGO 지하철정보', provider: '공공데이터포털 15098554 (GetSubwaySttnAcctoSchdulList)', file: 'scripts/input/timetable-tago.json', license: '이용허락범위 제한 없음', use: '서울 시간표에 없는 노선의 추정 운행시간' },
   { name: '콘텐츠팀 시트 (초안)', provider: '모이자_역_카테고리_초안.xlsx 의 역·카테고리·장소 탭', file: 'scripts/input/sheet-*.csv', license: '팀 자료' },
 ];
+const DEMO_SOURCE = { name: '시연 시나리오', provider: '개발팀 작성 (지금 역·그래프·후보 역 데이터로 만든 예시, 10/4)', file: 'scripts/input/sheet-demo.csv', license: '팀 자료', use: '예시로 해보기 입력값과 손으로 계산한 기대 결과(expected)' };
 
 // ---------- 전체 ----------
 
@@ -738,6 +768,7 @@ export function convert() {
   const places = buildPlaces(readTable('sheet-places.csv'), bySlug, issues);
   const demoFile = join(INPUT, 'sheet-demo.csv');
   if (!existsSync(demoFile)) issues.push('시연 시나리오 시트가 아직 없음 (demo.json 은 빈 목록)');
+  const scenarios = existsSync(demoFile) ? buildDemo(readTable('sheet-demo.csv'), index, candidates, issues) : [];
 
   const graph = {
     meta: {
@@ -758,7 +789,7 @@ export function convert() {
     routes,
     edges,
   };
-  const demo = { meta: { generated_by: 'node scripts/convert.js', sources: SOURCES.slice(-1) }, scenarios: [] };
+  const demo = { meta: { generated_by: 'node scripts/convert.js', sources: [DEMO_SOURCE] }, scenarios };
   return { stations: stationList, graph, candidates, places, demo, issues };
 }
 

@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { compareWithMidpoint, pickCandidates, rankStations } from '../src/js/lib/recommend.js';
+import { travelTimes } from '../src/js/lib/transit.js';
 
 // 실행: npm test
 
@@ -59,6 +61,27 @@ test('FUNC-007: 모든 참여자의 출발역이 후보 역과 같으면 전원 
   const r = rankStations([stationsById.A], { p1: { A: time(0) }, p2: { A: time(0) } });
   assert.equal(r[0].score, 0);
   assert.equal(r[0].max_time, 0);
+});
+
+// 시연 시나리오의 기대값은 손으로 계산해 scripts/input/sheet-demo.csv 에 적는다.
+//   종로3가 회식: 감자(연신내) 16 · 고구마(청량리) 12 · 옥수수(마포) 11 · 단호박(압구정) 12분, 모두 환승 없음
+//   평균 51 ÷ 4 = 12.75, 표준편차 √((3.25² + 0.75² + 1.75² + 0.75²) ÷ 4) = √(14.75 ÷ 4) = 1.92 → 점수 14.67
+//   2위 시청 19.56. 중간 지점(출발역 중심에 가장 가까운 후보) 을지로3가 평균 16.75 → 16.75 − 12.75 = 4분 단축
+//   강남 회의: 사과(판교) 15 · 바나나(사당) 10 · 포도(잠실) 12분 → 평균 12.33, 표준편차 √(12.67 ÷ 3) = 2.05 → 14.39 (2위 교대 21.68, 중간 지점 역삼 3분 단축)
+//   홍대입구 오락: 고양이(김포공항) 17 · 강아지(일산) 29 · 토끼(신도림) 12 · 여우(공덕) 6 · 다람쥐(연신내, 환승 1) 21분
+//     → 평균 85 ÷ 5 = 17, 표준편차 √(306 ÷ 5) = 7.82 → 24.82 (2위 합정 30.71, 중간 지점 합정 3분 단축)
+test('FUNC-007: 시연 시나리오(data/demo.json expected)의 1위·점수·단축 분이 계산 결과와 같다', () => {
+  const read = (name) => JSON.parse(readFileSync(new URL(`../data/${name}.json`, import.meta.url), 'utf8'));
+  const [demo, graph, stations, candidatesByPurpose] = ['demo', 'transit-graph', 'stations', 'candidates'].map(read);
+  const byId = Object.fromEntries(stations.map((s) => [s.id, s]));
+  assert.ok(demo.scenarios.length >= 1);
+  for (const sc of demo.scenarios) {
+    const { candidates, midpoint } = pickCandidates(sc.purpose, sc.participants, byId, candidatesByPurpose);
+    const results = rankStations(candidates, travelTimes(graph, sc.participants, candidates, byId));
+    assert.equal(results[0].station.id, sc.expected.station_id, `${sc.name}: 1위 ${results[0].station.name}`);
+    assert.ok(Math.abs(results[0].score - sc.expected.score) < 0.005, `${sc.name}: 점수 ${results[0].score}`);
+    assert.equal(compareWithMidpoint(results, midpoint).saved_minutes, sc.expected.saved_minutes, sc.name);
+  }
 });
 
 test('FUNC-008: 단축 분 = round(중간 지점 평균 − 1위 평균), 0 이하면 0', () => {
