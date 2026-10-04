@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { buildRouteInfo, kakaoMapLink, myNickname } from '../src/js/screens/route.js';
 
 // 실행: npm test
@@ -57,6 +58,33 @@ test("FUNC-015: 그래프가 없거나(계산 실패) 예상값이면 확정 때
   const estimated = buildRouteInfo(confirmation, '희원', { ...base, travel: () => ({ ...graphRoute, minutes: 25, is_estimated: true }) });
   assert.equal(estimated.minutes, 20);
   assert.equal(estimated.is_estimated, true);
+});
+
+test("FUNC-015: 급행이 다니는 노선은 구간에 '급행'/'일반', 급행이 없는 노선은 표시하지 않는다", () => {
+  const graph = {
+    routes: [{ id: '9', line: '9', express: false }, { id: '9-express', line: '9', express: true }, { id: '2-main', line: '2', express: false }],
+    edges: [],
+  };
+  const travel = () => ({
+    ...graphRoute,
+    steps: [
+      { line: '9', express: true, from: 'S1', to: 'S2', minutes: 10 },
+      { line: '9', express: false, from: 'S2', to: 'S3', minutes: 3 },
+      { line: '2', express: false, from: 'S3', to: 'S1', minutes: 5 },
+    ],
+  });
+  const info = buildRouteInfo(confirmation, '희원', { ...base, graph, travel });
+  assert.deepEqual(info.steps.map((s) => [s.line, s.train]), [['9', 'express'], ['9', 'local'], ['2', null]]);
+});
+
+test("FUNC-015: 실제 그래프로 김포공항 → 고속터미널은 9호선 '급행' 구간", () => {
+  const graph = JSON.parse(readFileSync(new URL('../data/transit-graph.json', import.meta.url), 'utf8'));
+  const stations = JSON.parse(readFileSync(new URL('../data/stations.json', import.meta.url), 'utf8'));
+  const id = (name) => stations.find((s) => s.name === name).id;
+  const trip = { ...confirmation, s: id('고속터미널'), people: [{ n: '희원', s: id('김포공항'), m: 30 }] };
+  const info = buildRouteInfo(trip, '희원', { stationsById: Object.fromEntries(stations.map((s) => [s.id, s])), graph, advise: () => advice });
+  assert.equal(info.is_estimated, false);
+  assert.deepEqual(info.steps.map((s) => [s.line, s.train, s.from.name, s.to.name]), [['9', 'express', '김포공항', '고속터미널']]);
 });
 
 test('FUNC-015: 다른 사람을 고르면 그 사람의 경로', () => {
