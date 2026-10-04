@@ -7,7 +7,7 @@ import {
 // 실행: npm test   (FUNC-016 #14 데이터 변환)
 
 const ALIASES = {
-  names: { 당고개: '불암산', 서울: '서울역', 총신대입구: '총신대입구(이수)', 이수: '총신대입구(이수)' },
+  names: { 당고개: '불암산', 총신대입구: '총신대입구(이수)', 이수: '총신대입구(이수)' },
   namesByLine: { '경의중앙:신촌': '신촌(경의중앙)' },
   outsideSeoul: ['지축'],
   excludeStations: [],
@@ -30,8 +30,8 @@ test("FUNC-016: 역 이름 정규화 — 끝의 '역', 괄호, 공백을 떼고 
   assert.equal(matchKey('종로3가역'), '종로3가');
   assert.equal(matchKey('서울대입구(관악구청)'), '서울대입구');
   assert.equal(canonicalName('시청역', [], ALIASES), '시청');
-  assert.equal(canonicalName('서울역', [], ALIASES), '서울역');
-  assert.equal(canonicalName('서울', ['GTX-A'], ALIASES), '서울역');
+  assert.equal(canonicalName('서울역', [], ALIASES), '서울', '화면이 "{name}역"으로 붙이므로 서울역도 "서울"');
+  assert.equal(canonicalName('서울', ['GTX-A'], ALIASES), '서울');
   assert.equal(canonicalName('당고개', ['4'], ALIASES), '불암산');
   assert.equal(canonicalName('이수', ['7'], ALIASES), '총신대입구(이수)');
   assert.equal(canonicalName('신촌', ['경의중앙'], ALIASES), '신촌(경의중앙)');
@@ -54,10 +54,10 @@ test('FUNC-016: 같은 이름·가까운 역은 하나로 합치고 id는 S + �
     row('0309', '지축', '3호선', 37.6481, 126.9137),
   ], ALIASES, issues());
   const byName = Object.fromEntries(stations.map((s) => [s.name, s]));
-  assert.equal(byName['서울역'].id, 'S0150');
-  assert.deepEqual([...byName['서울역'].coarse].sort(), ['1', '4']);
+  assert.equal(byName['서울'].id, 'S0150');
+  assert.deepEqual([...byName['서울'].coarse].sort(), ['1', '4']);
   assert.ok(byName['신촌'] && byName['신촌(경의중앙)'], '2호선 신촌과 경의중앙선 신촌은 다른 역');
-  assert.equal(byName['서울역'].seoul, true);
+  assert.equal(byName['서울'].seoul, true);
   assert.equal(byName['지축'].seoul, false);
 });
 

@@ -65,7 +65,7 @@ const CODE_LINES = { '01': '1', '02': '2', '03': '3', '04': '4', 25: '5', 26: '6
 // 공식 역간 소요시간 CSV 로 만드는 계통 (지선·순환은 연속 행으로 추측하지 않고 여기서 정한다)
 //   sections: CSV 의 그 호선 "from 줄 ~ to 줄". branchFrom: 지선이 갈라지는 역. oneWay: CSV 순서 방향으로만
 const OFFICIAL_ROUTES = [
-  { id: '1', line: '1', sections: [{ from: '서울역', to: '청량리' }] },
+  { id: '1', line: '1', sections: [{ from: '서울', to: '청량리' }] },
   { id: '2-main', line: '2', name: '2호선 본선', sections: [{ from: '시청', to: '시청' }] },
   { id: '2-seongsu', line: '2', name: '2호선 성수지선', sections: [{ branchFrom: '성수', from: '용답', to: '신설동' }] },
   { id: '2-sinjeong', line: '2', name: '2호선 신정지선', sections: [{ branchFrom: '신도림', from: '도림천', to: '까치산' }] },
@@ -151,7 +151,7 @@ export function matchKey(name) {
   const s = stripParen(name);
   return s.length > 1 && s.endsWith('역') ? s.slice(0, -1) : s;
 }
-/** 화면에 쓸 공식 이름. aliases(호선별 → 공통) 순서로 찾고, 없으면 괄호·공백·끝의 '역'을 뗀 이름 ("서울역"은 aliases 로 지킨다) */
+/** 화면에 쓸 공식 이름. aliases(호선별 → 공통) 순서로 찾고, 없으면 괄호·공백·끝의 '역'을 뗀 이름 ("서울역" → "서울". 화면이 "{name}역"으로 붙여 쓴다) */
 export function canonicalName(raw, lines, aliases) {
   const key = matchKey(raw);
   for (const line of lines) if (aliases.namesByLine?.[`${line}:${key}`]) return aliases.namesByLine[`${line}:${key}`];
@@ -601,7 +601,7 @@ function checkConnectivity(stations, edges, issues) {
   }
   // 정류장 단위로 묶어 본다 (같은 역의 노드끼리는 환승 간선으로 이어져 있다)
   const nodes = new Set(edges.flatMap((e) => [station(e.from), station(e.to)]));
-  const hub = stations.find((s) => s.name === '서울역')?.id;
+  const hub = stations.find((s) => s.name === '서울')?.id;
   const reach = (adj) => { const seen = new Set([hub]), stack = [hub]; while (stack.length) for (const n of adj[stack.pop()] ?? []) if (!seen.has(n)) { seen.add(n); stack.push(n); } return seen; };
   const fwd = reach(out), back = reach(inn);
   for (const s of stations) {

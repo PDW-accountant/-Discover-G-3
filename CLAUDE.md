@@ -252,7 +252,7 @@ docs/                   문서
 
 | 파일 | 내용 |
 |---|---|
-| `stations.json` | 수도권 지하철역 전체(출발역 선택용, 약 650개). `{ id, name, lines[], lat, lng, seoul }`. 원천: 서울시 역사마스터 정보(서울 열린데이터광장, 공공누리 제1유형, 출처 표시 필요). 이름이 같고 가까운(0.6km 안) 역은 하나로 합치고 호선은 배열(이름이 같아도 떨어진 역은 따로: 2호선 신촌 / 신촌(경의중앙)). id는 `S` + 가장 작은 역사_ID. `seoul`은 서울 여부 |
+| `stations.json` | 수도권 지하철역 전체(출발역 선택용, 약 650개). `{ id, name, lines[], lat, lng, seoul }`. 원천: 서울시 역사마스터 정보(서울 열린데이터광장, 공공누리 제1유형, 출처 표시 필요). 이름이 같고 가까운(0.6km 안) 역은 하나로 합치고 호선은 배열(이름이 같아도 떨어진 역은 따로: 2호선 신촌 / 신촌(경의중앙)). id는 `S` + 가장 작은 역사_ID. `seoul`은 서울 여부. 이름 끝에 '역'을 붙이지 않는다(서울역도 `서울`. 화면이 copy.json의 `{name}역`으로 붙인다) |
 | `transit-graph.json` | 지하철 그래프. 노드 = `"역id:계통id"`(계통 = 갈아타지 않고 쭉 갈 수 있는 열차 노선 단위, 예: `1-incheon`, `2-main`, `5-macheon`, `9`, `9-express`). `routes`(계통 목록: 호선·이름·급행 여부)와 `edges`(`ride` 운행시간(분) / `transfer` 환승 도보시간(분) / `swap` 급행↔일반 갈아타기). 원천과 보완 방법은 7장. 변환 스크립트가 만들고 손으로 고치지 않는다 |
 | `candidates.json` | `{ "회식": [역id…], "회의": […], "오락": […] }` 목적별 8~10곳 |
 | `places.json` | `{ place_id, station_id, purpose, order, name, category, reason, kakao_url, checked_at, detail }`. order 1~3은 카드, 4 이후는 "더 보기" 목록. detail은 목적별로 다름(콘텐츠팀 시트 열 기준) |

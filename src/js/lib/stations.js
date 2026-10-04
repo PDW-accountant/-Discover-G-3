@@ -1,5 +1,6 @@
 // 출발역 목록 정렬·검색 (개발 A) — FUNC-002
-// Station: { id, name, lines[], lat, lng } (data/stations.json). 서울 밖 역 제외는 데이터 변환(FUNC-016)에서 한다.
+// Station: { id, name, lines[], lat, lng, seoul } (data/stations.json). 수도권 지하철역 전체(서울 밖 역 포함, 10/4 변경. seoul은 서울 여부 참고용).
+// name에는 끝의 '역'이 없다('서울역'도 '서울'). 화면은 copy.json의 '{name}역'으로 붙여 쓴다.
 
 // 호선 표시: [동그라미 안 글자, 노선 색, 글자 색]. 목록에 없는 호선은 이름 그대로 회색으로 보여준다.
 export const LINE_BADGES = {

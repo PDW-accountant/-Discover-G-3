@@ -82,7 +82,7 @@
   "meeting.mineSoon": "내 약속 확인 기능을 준비하고 있어요",
   "join.eyebrow": "참여자",
   "join.title": "누가, 어디서 출발하나요?",
-  "join.lead": "출발지는 서울 시내 지하철역만 고를 수 있어요.",
+  "join.lead": "출발지는 수도권 지하철역 중에서 고를 수 있어요.",
   "join.countLabel": "인원 {count}명",
   "join.stationName": "{name}역",
   "join.change": "변경",
