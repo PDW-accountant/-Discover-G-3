@@ -53,7 +53,9 @@ function openRoute(container, params) {
   const fallback = () => showMessage(container, t('confirm.routeNotReady'));
   try {
     // 경로에서 뒤로 돌아오면(#44) 이미 만든 확정 정보({ confirmation, room_id })로 다시 그린다 — 방 저장을 되풀이하지 않는다
-    Promise.resolve(go(renderRoute, container, params, { back: params })).catch(fallback);
+    // 방 없이 확정했으면 주소를 공유 링크(#d=)로 바꿔 둔다 → 새로고침해도 경로 화면이 다시 열린다(방 링크 ?room= 은 이미 주소가 그렇다)
+    const url = params.confirmation?.share_url?.includes('#d=') ? params.confirmation.share_url : undefined;
+    Promise.resolve(go(renderRoute, container, params, { back: params, url })).catch(fallback);
   } catch {
     fallback();
   }
@@ -139,7 +141,8 @@ export async function render(container, params = {}) {
 
   const { request, selected_result: selectedResult, place, participants, room_id: roomId } = params;
   if (!place) return showMessage(container, t('confirm.noPlace'), 'error');
-  showMessage(container, t('confirm.saving'));
+  const saving = createShell(container);
+  saving.screen.replaceChildren(el('p', { className: 'lead', textContent: t('confirm.saving') }));
 
   let confirmation;
   try {
@@ -164,6 +167,8 @@ export async function render(container, params = {}) {
     addMeeting(confirmation); // FUNC-020 내 모임 목록
   } catch { /* FUNC-020(#18) 구현 전 */ }
 
+  // 저장하는 동안 [뒤로]로 돌아갔으면(#44) 이전 화면을 덮어 그리지 않는다. 확정은 내 약속 목록에서 다시 열 수 있다
+  if (!saving.screen.isConnected) return confirmation;
   drawSummary(container, confirmation, {
     stations, places: [place, ...places], roomId: confirmation.share_url.includes('?room=') ? roomId : undefined, notice,
   });

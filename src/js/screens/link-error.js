@@ -5,7 +5,7 @@
 // params: 부르는 쪽 값을 그대로 받지만 쓰지 않는다 (main.js: { reason }, join.js: { room_id }).
 
 import { t } from '../lib/data.js';
-import { createShell, el } from '../lib/shell.js';
+import { createShell, el, goHome } from '../lib/shell.js';
 
 /** 화면을 그린다. @param {HTMLElement} container */
 export function render(container, params = {}) {
@@ -13,9 +13,6 @@ export function render(container, params = {}) {
   screen.replaceChildren(el('div', { className: 'empty-state', role: 'alert' }, [
     t('link.invalid'), el('br'), t('link.invalidHint'),
   ]));
-  // 주소의 ?room=·#d=를 지우고 첫 화면을 새로 연다.
-  foot.replaceChildren(el('button', {
-    type: 'button', className: 'btn', textContent: t('link.home'),
-    onclick: () => { location.href = location.pathname; },
-  }));
+  // [홈]과 같은 새 출발: 화면 이동 기록을 비우고 주소의 ?room=·#d=를 지운 첫 화면(#44). 페이지를 다시 불러오지 않는다.
+  foot.replaceChildren(el('button', { type: 'button', className: 'btn', textContent: t('link.home'), onclick: () => goHome() }));
 }

@@ -12,7 +12,7 @@
 
 import { loadData, t } from '../lib/data.js';
 import { lineBadge, rareServiceNotices, searchStations } from '../lib/stations.js';
-import { createShell, el, go } from '../lib/shell.js';
+import { createShell, el, go, replace } from '../lib/shell.js';
 import { characterNode } from '../lib/characters.js';
 import { createRoom, deleteParticipant, getRoom, getStatus, saveParticipant } from '../lib/api-client.js';
 import { addRoomMeeting, clearDraft, getHostToken, saveDraftSoon, setHostToken } from '../lib/storage.js';
@@ -236,6 +236,8 @@ export async function render(container, params = {}) {
     roomId = created.room_id;
     hostToken = created.host_token;
     joinUrl = created.join_url;
+    // 방을 만드는 동안 [뒤로]로 돌아갔으면(#44) 떠난 화면의 주소를 바꾸거나 그 위에 그리지 않는다. 방은 내 약속 목록에서 다시 연다
+    if (!screen.isConnected) return;
     // 주소를 방 링크로 바꿔 둔다. 새로고침하거나 다른 앱을 보고 돌아와도 main.js가 이 총무 화면을 다시 연다.
     history.replaceState(history.state, '', `?room=${encodeURIComponent(roomId)}`); // 뒤로가기 기록(state, #44)은 그대로 둔다
 
@@ -537,9 +539,9 @@ export async function render(container, params = {}) {
       el('button', { type: 'button', className: 'btn ghost sm', textContent: t('participants.refresh'), onclick: () => render(container, params) }));
   }
   if (room === null) return screen.replaceChildren(el('p', { textContent: t('link.invalid') }));
-  if (confirmed()) { // 이미 확정된 방은 참여자 화면(join.js)과 같이 경로 화면으로 보낸다
+  if (confirmed()) { // 이미 확정된 방은 참여자 화면(join.js)과 같이 경로 화면으로 보낸다(같은 자리를 바꿈 → 뒤로가기는 그 전 화면, #44)
     try {
-      return await renderRoute(container, { room_id: roomId, room });
+      return await replace(renderRoute, container, { room_id: roomId, room });
     } catch {
       return screen.replaceChildren(el('p', { textContent: t('join.confirmed') }));
     }

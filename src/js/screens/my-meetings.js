@@ -1,6 +1,8 @@
 // 내 모임 목록 (개발 A) — FUNC-020 (#18)
 // 첫 화면 [내 약속 확인하기]로 연다. 이 휴대폰에서 만든 모임을 최근 순으로: '입력 받는 중'(방을 만든 뒤)과 '확정'.
-//   [열기]: 입력 받는 중 → 방 링크(?room=, 이 기기는 총무라 총무 입력 현황이 열림) / 확정 → 공유 링크(개인 경로)
+//   [열기]: 입력 받는 중 → 총무 입력 현황(?room=, 총무 토큰이 없으면 참여자 입력) / 확정 → 개인 경로(#d= 공유 링크를 풀어서)
+//     화면 이동 기록(go)을 거쳐 열고 주소만 그 약속의 링크로 바꾼다(#44). 그래서 [뒤로]·휴대폰 뒤로가기는 이 목록으로 돌아오고,
+//     새로고침하면 그 약속이 다시 열린다. (예전에는 링크로 열어 앱이 처음부터 다시 시작돼 뒤로가기가 종료 안내로 바뀌었다)
 //   [삭제]: 한 번 더 눌러야 지운다. 입력 받는 중인 방은 서버의 방과 이 기기의 총무 토큰도 지운다(deleteRoom).
 //     서버가 없거나(Redis 없이 실행) 실패해도 목록에서는 지운다 — 서버의 방은 30일 뒤 만료. 확정된 방은 목록에서만 지운다.
 // '이 휴대폰에만 저장돼요' 안내. 문구는 lib/data.js의 t()로 읽는다. 화면 모양은 프로토타입2의 목록(.list·.place·.mini)을 따른다.
@@ -9,7 +11,25 @@ import { loadData, t } from '../lib/data.js';
 import { deleteRoom } from '../lib/api-client.js';
 import { getHostToken, listMeetings, removeMeeting } from '../lib/storage.js';
 import { formatMeetingTime } from '../lib/share.js';
-import { createShell, el } from '../lib/shell.js';
+import { readShareUrl } from '../lib/share-link.js';
+import { createShell, el, go } from '../lib/shell.js';
+import { render as renderRoute } from './route.js';
+import { render as renderParticipants } from './participants.js';
+import { render as renderJoin } from './join.js';
+
+/**
+ * [열기]가 열 화면. 링크를 풀어 확정 약속(#d=)이면 개인 경로, 방(?room=)이면 총무 입력 현황(총무 토큰 있음) 또는 참여자 입력.
+ * @returns {{renderFn, params, url}|null} 풀 수 없는 링크면 null(링크로 그냥 연다)
+ */
+export function screenForMeeting(meeting, { hasHostToken = getHostToken } = {}) {
+  const base = globalThis.location?.href;
+  const target = readShareUrl(base ? new URL(meeting.url, base) : meeting.url);
+  if (target.type === 'confirmation') return { renderFn: renderRoute, params: { confirmation: target.confirmation }, url: meeting.url };
+  if (target.type === 'room') {
+    return { renderFn: hasHostToken(target.room_id) ? renderParticipants : renderJoin, params: { room_id: target.room_id }, url: meeting.url };
+  }
+  return null;
+}
 
 /** 목록 한 줄에 보일 이름: 확정이면 '종로3가역 · 시민식당', 입력 받는 중이면 '회식 / 식사 약속'. */
 export function meetingTitle(meeting, { stationsById = {}, placesById = {} } = {}) {
@@ -55,7 +75,15 @@ export async function render(container) {
         el('em', { textContent: [formatMeetingTime(meeting.arrival_time), confirmed ? t(`meeting.purpose.${meeting.purpose}`) : null].filter(Boolean).join(' · ') }),
       ]),
       el('div', { className: 'pl-btns' }, [
-        el('a', { className: 'mini', href: meeting.url, textContent: t('meetings.open') }),
+        el('a', {
+          className: 'mini', href: meeting.url, textContent: t('meetings.open'),
+          onclick: (event) => {
+            const next = screenForMeeting(meeting);
+            if (!next) return; // 풀 수 없는 링크는 브라우저가 그대로 연다
+            event.preventDefault();
+            go(next.renderFn, container, next.params, { url: next.url });
+          },
+        }),
         el('button', {
           type: 'button', className: sure ? 'mini on' : 'mini', disabled: busy,
           textContent: t(sure ? 'meetings.deleteConfirm' : 'meetings.delete'),
