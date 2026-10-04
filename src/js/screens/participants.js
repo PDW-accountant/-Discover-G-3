@@ -5,6 +5,7 @@
 // 참여자 줄: { participant_id, nickname, origin_station_id } — recommend.js·share-link.js·서버 저장과 같은 이름.
 // FUNC-002(#3): 줄마다 출발역 검색·선택. FUNC-003(#4): 닉네임(비우면 'N번', 중복 불가), 인원 3~9명 조절, '찾기' → 추천 결과(result).
 // FUNC-021(#19): 저장소가 있으면 이 화면의 '링크로 입력받기'로 방을 만든다. 역까지 고른 줄은 방에 저장하고, 링크를 보여준 뒤 방 모드로 바뀐다.
+//   방 모드가 되면 주소를 ?room={id}로 바꾼다. 총무 기기에서 그 주소를 다시 열면 main.js가 이 화면을 연다(확정된 방이면 경로 화면).
 // FUNC-023(#21): 방 모드는 방의 참여자 목록을 5초마다 읽어 명단·'n명 중 m명'을 보여주고,
 //   총무는 삭제와 대신 입력(역을 고르면 바로 방에 저장)을 하고, 총무가 아니면 보기만 한다. 10분 동안 변화가 없으면 자동 확인을 멈추고 새로고침 버튼을 보여준다.
 //   '찾기'는 방의 참여자 목록으로 결과 화면(#7, result.js)을 연다. 방이 없으면 로컬 모드(총무가 모두 입력)로 동작한다.
@@ -19,6 +20,7 @@ import { roomUrl } from '../lib/share-link.js';
 import { copyLink } from '../lib/share.js';
 import { MAX_PARTICIPANTS, MIN_PARTICIPANTS, NICKNAME_MAX_LENGTH, POLL_INTERVAL_MS, POLL_STOP_AFTER_MS } from '../config.js';
 import { render as renderResult } from './result.js';
+import { render as renderRoute } from './route.js';
 
 const SEARCH_SVG = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="m13 13 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
 
@@ -231,6 +233,8 @@ export async function render(container, params = {}) {
     roomId = created.room_id;
     hostToken = created.host_token;
     joinUrl = created.join_url;
+    // 주소를 방 링크로 바꿔 둔다. 새로고침하거나 다른 앱을 보고 돌아와도 main.js가 이 총무 화면을 다시 연다.
+    history.replaceState(null, '', `?room=${encodeURIComponent(roomId)}`);
 
     const { save, keep } = splitRowsForRoom(rows);
     for (const row of save) { // 순서대로 저장해 명단 순서가 입력 순서와 같게 한다
@@ -519,6 +523,13 @@ export async function render(container, params = {}) {
       el('button', { type: 'button', className: 'btn ghost sm', textContent: t('participants.refresh'), onclick: () => render(container, params) }));
   }
   if (room === null) return screen.replaceChildren(el('p', { textContent: t('link.invalid') }));
+  if (confirmed()) { // 이미 확정된 방은 참여자 화면(join.js)과 같이 경로 화면으로 보낸다
+    try {
+      return await renderRoute(container, { room_id: roomId, room });
+    } catch {
+      return screen.replaceChildren(el('p', { textContent: t('join.confirmed') }));
+    }
+  }
   tracker = trackChange(null, remote());
   drawLink();
   draw();
