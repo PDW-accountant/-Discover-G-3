@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { buildRouteInfo, kakaoMapLink, myNickname } from '../src/js/screens/route.js';
+import { buildRouteInfo, kakaoMapLink, meetingPlace, myNickname } from '../src/js/screens/route.js';
 
 // 실행: npm test
 
@@ -85,6 +85,12 @@ test("FUNC-015: 실제 그래프로 김포공항 → 고속터미널은 9호선 
   const info = buildRouteInfo(trip, '희원', { stationsById: Object.fromEntries(stations.map((s) => [s.id, s])), graph, advise: () => advice });
   assert.equal(info.is_estimated, false);
   assert.deepEqual(info.steps.map((s) => [s.line, s.train, s.from.name, s.to.name]), [['9', 'express', '김포공항', '고속터미널']]);
+});
+
+test('FUNC-015: 화면 위쪽에 보일 만남 장소 — 확정 정보의 장소 id로 찾고, 없으면 null', () => {
+  assert.deepEqual(meetingPlace(confirmation, places, '강남', (p) => p.kakao_url), { name: '고깃집', url: 'https://place.map.kakao.com/1' });
+  assert.equal(meetingPlace({ ...confirmation, pl: 'NOPE' }, places), null);
+  assert.equal(meetingPlace(confirmation, []), null);
 });
 
 test('FUNC-015: 다른 사람을 고르면 그 사람의 경로', () => {
