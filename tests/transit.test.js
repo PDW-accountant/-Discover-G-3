@@ -109,8 +109,18 @@ test('FUNC-006: 9호선 김포공항 → 고속터미널은 급행 구간으로 
   assert.deepEqual(r.steps.map((s) => [s.line, s.express]), [['9', true]]);
 });
 
-test('FUNC-006: 그래프에 없는 역(임진강)은 직선거리 예상 시간으로 대체되고 is_estimated=true', () => {
-  assert.equal(trip('서울', '임진강').is_estimated, true);
+test('FUNC-006: 모든 역이 그래프로 계산된다 (직선거리 예상 시간으로 대체되는 역이 없다)', () => {
+  const from = byName('서울');
+  assert.deepEqual(stations.filter((s) => s !== from && travelTime(graph, from, s).is_estimated).map((s) => s.name), []);
+});
+
+test('FUNC-006: 임진강 → 서울은 문산에서 셔틀을 갈아탄다, 동탄은 GTX-A로 이어진다', () => {
+  const imjin = trip('임진강', '서울');
+  const [shuttle, main] = imjin.steps.map((s) => [s.line, stationsById[s.from].name, stationsById[s.to].name]);
+  assert.deepEqual(shuttle, ['경의중앙', '임진강', '문산']);
+  assert.deepEqual(main.slice(0, 2), ['경의중앙', '문산']); // 문산에서 본선 열차로 갈아탄다
+  assert.ok(imjin.transfers >= 1);
+  assert.deepEqual(trip('동탄', '수서').steps.map((s) => s.line), ['GTX-A']);
 });
 
 test('FUNC-006: 9명 × 후보 10곳 계산이 1초 안에 끝난다', () => {

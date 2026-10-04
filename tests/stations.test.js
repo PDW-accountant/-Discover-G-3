@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { LINE_BADGES, lineBadge, normalizeKeyword, searchStations } from '../src/js/lib/stations.js';
+import { LINE_BADGES, lineBadge, normalizeKeyword, rareServiceNotices, searchStations } from '../src/js/lib/stations.js';
 
 // 실행: npm test
 
@@ -50,6 +50,13 @@ test('FUNC-002: 환승역 호선 표시값', () => {
   assert.deepEqual(lineBadge('2'), { label: '2', background: '#00A84D', color: '#fff' });
   assert.equal(lineBadge('신분당').label, '신분');
   assert.equal(lineBadge('없는노선').label, '없는노선'); // 표에 없는 호선은 이름 그대로
+});
+
+test('FUNC-002: 하루 몇 번만 다니는 역(trains_per_day)만 경고 문구를 만든다, 같은 역은 한 번만', () => {
+  const rare = { id: 'S1285', name: '임진강', lines: ['경의중앙'], trains_per_day: 2 };
+  assert.equal(rareServiceNotices([rare, stations[0], null, undefined, rare]).length, 1);
+  assert.deepEqual(rareServiceNotices([stations[0]]), []);
+  assert.deepEqual(rareServiceNotices(), []);
 });
 
 test('FUNC-002: data/stations.json의 모든 호선에 동그라미 표시값이 있다 (3글자 이내)', () => {

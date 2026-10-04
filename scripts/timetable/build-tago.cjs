@@ -8,6 +8,7 @@
 //   2. 다음 역 후보는 역ID 순서로 가까운 역(앞뒤 4칸 이내)으로 좁히고 가까운 후보부터 확인한다.
 //      (시간표만 보면, 멀리 있는 역에 몇 대 앞선 열차가 닿는 시각이 우연히 맞아서 가짜 이웃이 생긴다)
 //   3. 앞 열차와 간격이 충분히 벌어진 열차만 쓴다 (앞 열차가 아직 B역에 못 닿았으면 a 열차로 착각할 수 있다)
+//   4. 구간 하나에 열차가 4대 이상이어야 인정한다. 하루 몇 대뿐인 셔틀(SHUTTLE_STATIONS)만 2대로 낮춘다
 // 소요시간 = "A역 출발 → B역 도착" 시각 차이의 평균 (위아래 10%를 뺀다) (도착 시각이 없는 열차뿐이면 "출발 → 출발", method "dep")
 // 한쪽 방향만 구해지고 반대 방향이 빠진 구간은 같은 값으로 채운다 (method "mirror", n 0)
 
@@ -32,10 +33,18 @@ const SERVICE_DAY_START = 3 * 3600; // 새벽 3시 전 시각은 전날 운행�
 // 역ID 순서로는 이웃 후보에 들어오지 않는 연결 (역ID 계열이 달라서). 양쪽에 적는다
 //   경의중앙선 서울역 지선: 서울역(4P313) - 신촌(4P314) - 가좌(4K315)
 //   경의중앙선 계열이 바뀌는 곳: 효창공원앞(4K311) - 용산(4K110), 응봉(4K115) - 왕십리(4K210), 청량리(4K209) - 회기(4K118)
+//   GTX-A 구성(GXAX110) - 동탄(SRAX111): 동탄역은 SRT 와 같이 쓰는 역이라 ID 가 SR 계열이다
 const EXTRA_PAIRS = [
   ["MTRKRK4P314", "MTRKRK4K315"],
   ["MTRKRK4K311", "MTRKRK4K110"], ["MTRKRK4K115", "MTRKRK4K210"], ["MTRKRK4K209", "MTRKRK4K118"],
+  ["MTRGXAX110", "MTRSRAX111"],
 ];
+
+// 하루 몇 대만 다니는 셔틀의 역. 열차가 몇 시간 간격이라 앞뒤 열차와 헷갈릴 일이 없어서 최소 표본 수를 낮춘다
+//   경의중앙선 문산 - 운천(4K336) - 임진강(4K337): 평일 하루 왕복 2회 (문산 09:20, 17:05 출발)
+const SHUTTLE_STATIONS = new Set(["MTRKRK4K336", "MTRKRK4K337"]);
+const SHUTTLE_MIN_SAMPLES = 2;
+const isShuttle = (...ids) => ids.some((id) => SHUTTLE_STATIONS.has(id));
 const EXTRA_NEIGHBORS = {};
 for (const [a, b] of EXTRA_PAIRS) { (EXTRA_NEIGHBORS[a] ??= []).push(b); (EXTRA_NEIGHBORS[b] ??= []).push(a); }
 
@@ -132,8 +141,9 @@ function followingTrain(listB, aRef, window) {
 function findNext(aId, group, table, dir, endId, neighbors, allowed = () => true) {
   const listA = table[`${aId}|${dir}`][endId];
   for (const tier of TIERS) {
+    const min = isShuttle(aId, endId) ? SHUTTLE_MIN_SAMPLES : tier.min;
     const sparse = sparseTrains(listA, tier.gap);
-    if (sparse.length < tier.min) continue;
+    if (sparse.length < min) continue;
     for (const ring of neighbors[aId]) {
       let best = null;
       for (const bId of ring) {
@@ -144,7 +154,7 @@ function findNext(aId, group, table, dir, endId, neighbors, allowed = () => true
           const b = followingTrain(listB, a.ref, tier.window);
           if (b) samples.push({ a, b });
         }
-        if (samples.length < tier.min || samples.length / sparse.length < MIN_MATCH_RATIO) continue;
+        if (samples.length < min || samples.length / sparse.length < MIN_MATCH_RATIO) continue;
         const offsets = samples.map(({ a, b }) => b.ref - a.ref);
         const offset = median(offsets);
         if (median(offsets.map((o) => Math.abs(o - offset))) > MAX_SPREAD) continue;
@@ -215,9 +225,10 @@ function build() {
   const segments = [];
   for (const [key, p] of Object.entries(pairs)) {
     const [fromId, toId] = key.split("|");
-    const useArr = p.arrTravel.length >= 4;
+    const need = isShuttle(fromId, toId) ? SHUTTLE_MIN_SAMPLES : 4;
+    const useArr = p.arrTravel.length >= need;
     const travel = useArr ? p.arrTravel : p.depTravel;
-    if (travel.length < 4) continue;
+    if (travel.length < need) continue;
     segments.push({
       fromId, toId, from: cleanName(byId[fromId].subwayStationName), to: cleanName(byId[toId].subwayStationName),
       line: byId[fromId].subwayRouteName, sec: Math.round(trimmedMean(travel)), method: useArr ? "arr" : "dep", n: travel.length,

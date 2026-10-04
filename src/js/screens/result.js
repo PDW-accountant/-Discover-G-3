@@ -9,7 +9,7 @@
 // '지금 출발 기준'이라는 표현은 쓰지 않는다(외부 조회가 없어 시점 개념이 없음).
 
 import { loadData, t } from '../lib/data.js';
-import { lineBadge } from '../lib/stations.js';
+import { lineBadge, rareServiceNotices } from '../lib/stations.js';
 import { travelTimes } from '../lib/transit.js';
 import { compareWithMidpoint, pickCandidates, rankStations } from '../lib/recommend.js';
 import { placeLink, placesFor } from '../lib/places.js';
@@ -103,7 +103,7 @@ export async function render(container, params = {}) {
   if (outcome.error === 'noCandidates') return showMessage(t('result.noCandidates'));
   if (outcome.error) return showMessage(t('result.failed'), { retry: true });
 
-  const { top, comparison, places } = outcome;
+  const { top, comparison, places, stationsById } = outcome;
   const station = top.station;
   let selected = null; // 고른 장소
 
@@ -167,6 +167,8 @@ export async function render(container, params = {}) {
     rec,
     list,
     el('p', { className: 'hint', textContent: t('result.timeBasis') }),
+    ...rareServiceNotices([...participants.map((p) => stationsById[p.origin_station_id]), station])
+      .map((text) => el('p', { className: 'notice', textContent: text })),
     ...(top.is_estimated ? [el('p', { className: 'hint', textContent: t('result.partialEstimate') })] : []),
     ...(places.length ? [el('p', { className: 'hint', textContent: t('result.viewHint') })] : []),
   );
