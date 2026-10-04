@@ -298,4 +298,6 @@ input.p-name.invalid{border-color:#cf222e;}
 .route-place .k{color:var(--muted);flex:none;}
 .route-place .v{flex:1;min-width:0;font-weight:700;overflow-wrap:anywhere;}
 .route-place .view{flex:none;border-radius:999px;padding:6px 12px;font-weight:700;font-size:12px;background:var(--accent-mist);color:var(--accent-ink);text-decoration:none;}
+/* 화면 위쪽(도착 역 아래)의 만남 장소 줄 — 펼친 칸 밖이라 카드 모양으로 */
+.route-place.top{border:1px solid var(--hair);border-radius:16px;background:var(--card);margin:-8px 0 0;}
 @media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important;} }
