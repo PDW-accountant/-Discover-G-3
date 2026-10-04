@@ -85,5 +85,9 @@
   "join.lead": "출발지는 서울 시내 지하철역만 고를 수 있어요.",
   "join.countLabel": "인원 {count}명",
   "join.stationName": "{name}역",
-  "join.change": "변경"
+  "join.change": "변경",
+  "participants.defaultName": "{n}번",
+  "participants.find": "중간 장소 찾기",
+  "participants.findWaiting": "출발지를 모두 골라주세요 ({done}/{total})",
+  "participants.findSoon": "추천 결과 화면을 준비하고 있어요"
 }
