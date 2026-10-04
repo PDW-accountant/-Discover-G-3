@@ -10,6 +10,9 @@ import { MAX_PARTICIPANTS, NICKNAME_MAX_LENGTH } from '../config.js';
 export const CONFIRMATION_VERSION = 1;
 // ※ 공유 링크 만료 규칙은 미결(CLAUDE.md 10장). 정해지면 이 값만 바꾼다. 임시: 도착 희망 시각 + 30일.
 export const LINK_EXPIRE_DAYS = 30;
+// 링크를 열 때 만료 시각을 검사할지. 만료 규칙이 미결이라 지금은 끈다(#12 참고: 손상·형식 오류·없는 방만 안내).
+// 기획팀이 정하면 true로 바꾸면 된다. 예시 링크는 10/30 이후까지 열려야 한다(CLAUDE.md 10장).
+export const ENFORCE_LINK_EXPIRY = false;
 // # 뒤 문자열 최대 길이. 넘으면 닉네임을 줄인다 (FUNC-012 예외).
 export const MAX_ENCODED_LENGTH = 1800;
 
@@ -126,6 +129,34 @@ export function decodeConfirmation(text) {
   } catch {
     return null;
   }
+}
+
+const ROOM_ID_PATTERN = /^[A-Za-z0-9_-]{8,64}$/;
+
+/**
+ * FUNC-014 주소를 읽어 어느 화면을 열지 정한다. 화면(main.js)은 이 결과대로 render만 부른다.
+ * @param {string|URL|Location} url 지금 주소 (보통 location)
+ * @returns {{type:'room', room_id:string}
+ *   | {type:'confirmation', confirmation: MeetingConfirmation}  share_url은 지금 주소
+ *   | {type:'invalid', reason:'damaged'|'expired'}             → 안내 화면(link-error)
+ *   | {type:'home'}}                                           → 첫 화면
+ */
+export function readShareUrl(url, { now = new Date(), enforceExpiry = ENFORCE_LINK_EXPIRY } = {}) {
+  let parsed;
+  try {
+    parsed = new URL(String(url?.href ?? url));
+  } catch {
+    return { type: 'home' };
+  }
+  // 방 링크 …/?room={id}: 방 상태(입력 중/확정/없음)는 참여자 화면(join.js)이 서버에서 읽어 정한다.
+  const roomId = parsed.searchParams.get('room');
+  if (roomId !== null) return ROOM_ID_PATTERN.test(roomId) ? { type: 'room', room_id: roomId } : { type: 'invalid', reason: 'damaged' };
+  // 저장소 없이 만든 링크 …/#d=…
+  if (!parsed.hash.startsWith('#d=')) return { type: 'home' };
+  const confirmation = decodeConfirmation(parsed.hash);
+  if (!confirmation) return { type: 'invalid', reason: 'damaged' };
+  if (enforceExpiry && isExpired(confirmation, now)) return { type: 'invalid', reason: 'expired' };
+  return { type: 'confirmation', confirmation: { ...confirmation, share_url: parsed.href } };
 }
 
 /** 저장소 없이 쓰는 공유 링크 주소 (…/#d=…). */
