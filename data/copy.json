@@ -152,6 +152,8 @@
   "route.noTransfer": "환승 없음",
   "route.estimated": "예상 시간이에요. 확정할 때 계산한 시간만 보여드려요.",
   "route.step": "{from}역 → {to}역",
+  "route.express": "급행",
+  "route.local": "일반",
   "route.departAt": "{time}쯤 출발하면 여유 있어요",
   "route.place": "만남 장소",
   "route.view": "보기",
