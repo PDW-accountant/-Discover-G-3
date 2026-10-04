@@ -55,7 +55,7 @@ function sortedStations(stations, keyword) {
 
 function lineBadges(lines = []) {
   return lines.map((line) => {
-    const { label, background, color } = lineBadge(line); // 호선 색상표는 stations.js 한 곳에서 관리한다
+    const { label, background, color } = lineBadge(line);
     return el('span', {
       className: label.length > 1 ? 'badge two' : 'badge', textContent: label,
       title: `${line}`, style: `background:${background};color:${color}`,

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createConfirmation, normalizeConfirmation, encodeConfirmation, decodeConfirmation,
-  isExpired, hashUrl, roomUrl, LINK_EXPIRE_DAYS,
+  isExpired, hashUrl, roomUrl, readShareUrl, LINK_EXPIRE_DAYS, ENFORCE_LINK_EXPIRY,
 } from '../src/js/lib/share-link.js';
 
 const NAMES = ['감자', '택이', '여섯글자닉네', '민아', '재호', '현우', '해진', '지훈', '연경'];
@@ -97,4 +97,60 @@ test('normalizeConfirmation: 정해진 키만 남긴다 (share_url 등은 버림
   const c = createConfirmation(request, selected, place, participants);
   assert.deepEqual(normalizeConfirmation({ ...c, share_url: 'u', extra: 1 }), c);
   assert.equal(normalizeConfirmation(null), null);
+});
+
+// ---------- FUNC-014 공유 링크 열기: readShareUrl ----------
+const SITE = 'https://eodiga3.vercel.app';
+
+test('FUNC-014: 방 링크(?room=)면 방 id를 돌려준다 (방 상태는 참여자 화면이 판단)', () => {
+  assert.deepEqual(readShareUrl(`${SITE}/?room=abc123DEF45`), { type: 'room', room_id: 'abc123DEF45' });
+  assert.deepEqual(readShareUrl(roomUrl('room_1234-5', SITE)), { type: 'room', room_id: 'room_1234-5' });
+});
+
+test('FUNC-014: #d= 링크면 다른 기기에서 열어도 같은 확정 정보를 복원한다', () => {
+  const c = createConfirmation(request, selected, place, participants);
+  const url = hashUrl(c, SITE); // 확정한 기기에서 만든 링크
+  const opened = readShareUrl(new URL(url)); // 다른 기기·시크릿 창: 주소만 있으면 된다(저장소·로그인 불필요)
+  assert.equal(opened.type, 'confirmation');
+  const { share_url, ...rest } = opened.confirmation;
+  assert.deepEqual(rest, c);
+  assert.equal(share_url, url, '경로 화면에서 다시 복사할 수 있게 지금 주소를 share_url로 붙인다');
+});
+
+test('FUNC-014: 링크를 줄였어도(닉네임 축약) 형식이 맞으면 열린다', () => {
+  const c = createConfirmation(request, selected, place, participants);
+  const url = `${SITE}/#d=${encodeConfirmation(c, { maxLength: 10 })}`;
+  const opened = readShareUrl(url);
+  assert.equal(opened.type, 'confirmation');
+  assert.deepEqual(opened.confirmation.people.map((p) => p.m), c.people.map((p) => p.m));
+});
+
+test('FUNC-014 예외: 손상·형식 오류 링크는 안내 화면(invalid)', () => {
+  const c = createConfirmation(request, selected, place, participants);
+  const good = encodeConfirmation(c);
+  const bad = [
+    `${SITE}/#d=`,                       // 비어 있음
+    `${SITE}/#d=${good.slice(0, -8)}`,   // 잘림 (메신저에서 끝이 잘린 경우)
+    `${SITE}/#d=${good}%25`,             // 이상한 글자
+    `${SITE}/#d=${Buffer.from(JSON.stringify({ ...c, v: 9 })).toString('base64url')}`, // 다른 버전
+    `${SITE}/?room=`,                    // 방 id 없음
+    `${SITE}/?room=short`,               // 형식이 틀린 방 id
+    `${SITE}/?room=../../etc`,
+  ];
+  for (const url of bad) assert.deepEqual(readShareUrl(url), { type: 'invalid', reason: 'damaged' }, url);
+});
+
+test('FUNC-014: 그 외 주소는 첫 화면', () => {
+  for (const url of [`${SITE}/`, `${SITE}/index.html`, `${SITE}/#top`, `${SITE}/?utm=kakao`, 'not a url', undefined]) {
+    assert.deepEqual(readShareUrl(url), { type: 'home' }, String(url));
+  }
+});
+
+test('FUNC-014: 만료 검사는 지금 꺼져 있고(규칙 미결), 켜면 만료된 링크를 안내 화면으로 보낸다', () => {
+  assert.equal(ENFORCE_LINK_EXPIRY, false);
+  const url = hashUrl(createConfirmation(request, selected, place, participants), SITE);
+  const later = new Date('2027-01-01T00:00:00+09:00'); // 도착 + 30일 이후
+  assert.equal(readShareUrl(url, { now: later }).type, 'confirmation');
+  assert.deepEqual(readShareUrl(url, { now: later, enforceExpiry: true }), { type: 'invalid', reason: 'expired' });
+  assert.equal(readShareUrl(url, { now: new Date('2026-10-06T00:00:00+09:00'), enforceExpiry: true }).type, 'confirmation');
 });

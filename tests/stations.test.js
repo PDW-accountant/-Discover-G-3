@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { lineBadge, normalizeKeyword, searchStations } from '../src/js/lib/stations.js';
+import { readFileSync } from 'node:fs';
+import { LINE_BADGES, lineBadge, normalizeKeyword, searchStations } from '../src/js/lib/stations.js';
 
 // 실행: npm test
 
@@ -48,5 +49,11 @@ test('FUNC-002: 역 정보는 그대로 돌려주고 원래 목록은 바꾸지 
 test('FUNC-002: 환승역 호선 표시값', () => {
   assert.deepEqual(lineBadge('2'), { label: '2', background: '#00A84D', color: '#fff' });
   assert.equal(lineBadge('신분당').label, '신분');
-  assert.equal(lineBadge('김포골드').label, '김포골드'); // 표에 없는 호선은 이름 그대로
+  assert.equal(lineBadge('없는노선').label, '없는노선'); // 표에 없는 호선은 이름 그대로
+});
+
+test('FUNC-002: data/stations.json의 모든 호선에 동그라미 표시값이 있다 (3글자 이내)', () => {
+  const all = JSON.parse(readFileSync(new URL('../data/stations.json', import.meta.url), 'utf8'));
+  const missing = [...new Set(all.flatMap((s) => s.lines))].filter((line) => !(line in LINE_BADGES) || LINE_BADGES[line][0].length > 3);
+  assert.deepEqual(missing, []);
 });
