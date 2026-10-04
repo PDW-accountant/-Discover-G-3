@@ -2,13 +2,15 @@
 // 모임 목적 버튼 3개(회식/회의/오락, 하나만 선택), 도착 희망 일시(현재 이후만). 둘 다 있으면 다음 단계.
 // 문구는 lib/data.js의 t()로 읽는다.
 // 이번 구현(#19): 목적·도착 일시 입력. '링크로 입력받기'(방 만들기·링크 복사, FUNC-021)는 출발지 입력 화면(participants.js)에 있다.
-// 임시저장·내 약속 확인하기 버튼은 모양만 있고 누르면 준비 중 안내가 뜬다. 각 기능은 FUNC-019·020에서 붙인다.
+// 임시저장(FUNC-019, #17): 목적·날짜·시각이 바뀌면 0.5초 뒤 저장, [임시저장]은 바로 저장. 앱을 처음 열 때 저장된 내용이 있으면
+//   '이어서 입력할까요?'를 묻고, 이어서 하면 출발지 입력(참여자)까지 되살린다. 내 약속 확인하기(FUNC-020)는 아직 준비 중 안내.
 // 예시로 해보기(FUNC-004): data/demo.json 시나리오 버튼을 누르면 그 조건·참여자로 바로 추천 결과 화면을 연다. 시나리오가 없으면 숨긴다.
 // 화면 모양은 '모이자 UI 프로토타입2'를 따른다 (예시로 해보기는 프로토타입에 없어 기존 클래스로 아래쪽에 둔다).
 
 import { loadData, t } from '../lib/data.js';
 import { loadScenario } from '../lib/demo.js';
 import { createShell, el, go } from '../lib/shell.js';
+import { clearDraft, hasDraftContent, loadDraft, saveDraft, saveDraftSoon } from '../lib/storage.js';
 import { characterNode } from '../lib/characters.js';
 import { PURPOSES } from '../config.js';
 import { render as renderParticipants } from './participants.js';
@@ -49,6 +51,16 @@ export function buildMeetingRequest({ purpose, date, hour, min }, now = new Date
   return { request: { purpose, arrival_time: arrival.toISOString() } };
 }
 
+const pad2 = (n) => String(n).padStart(2, '0');
+
+/** 임시저장 시각 표시: 오늘이면 '19:20', 아니면 '10월 3일 19:20' */
+export function formatSavedAt(value, now = new Date()) {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  const time = `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  return d.toDateString() === now.toDateString() ? time : `${d.getMonth() + 1}월 ${d.getDate()}일 ${time}`;
+}
+
 /** 화면을 그린다. @param {HTMLElement} container */
 export async function render(container, params = {}) {
   // 출발지 입력에서 뒤로 돌아오면(#44) params.form으로 목적·도착 날짜·시각을 다시 채운다.
@@ -62,7 +74,48 @@ export async function render(container, params = {}) {
   const { screen, foot, toast } = createShell(container, { nav: false });
   const demo = await loadData().then((d) => d.demo).catch(() => null);
 
-  const changed = () => { state.message = ''; };
+  const formValues = () => ({ purpose: state.purpose, date: state.date, hour: state.hour, min: state.min });
+  // 값이 바뀌면 안내 문구를 지우고 0.5초 뒤 임시저장한다(#17)
+  const changed = () => { state.message = ''; saveDraftSoon({ form: formValues() }); };
+
+  // 앱을 처음 열었을 때만(뒤로 돌아온 경우가 아니면) 저장된 입력이 있는지 본다
+  let draft = params.form || params.participants ? null : loadDraft();
+  if (!hasDraftContent(draft)) draft = null;
+  let carried = params.participants ?? null; // 이어서 입력한 참여자 줄. 다음 화면으로 넘긴다
+
+  /** 이어서 입력: 목적·시각을 채우고, 참여자 입력이 있었으면 출발지 입력 화면까지 연다(시각이 지났으면 이 화면에서 다시 고르게). */
+  function resumeDraft() {
+    const saved = draft;
+    draft = null;
+    Object.assign(state, { purpose: null, ...defaultArrival() }, saved.form ?? {});
+    carried = saved.participants?.length ? saved.participants : null;
+    const request = buildMeetingRequest(state).request;
+    if (carried && request) return goNext();
+    if (carried) currentRequest(); // 약속 시각이 지났으면 '현재 이후 시각을 골라 주세요' 안내
+    draw();
+  }
+
+  function discardDraft() {
+    draft = null;
+    clearDraft();
+    draw();
+  }
+
+  function draftBlock() {
+    if (!draft) return null;
+    return el('div', { className: 'link-box draft' }, [
+      el('p', { className: 'lead', textContent: t('draft.prompt', { time: formatSavedAt(draft.saved_at) }) }),
+      el('div', { className: 'row2' }, [
+        el('button', { type: 'button', className: 'btn sm', textContent: t('draft.resume'), onclick: resumeDraft }),
+        el('button', { type: 'button', className: 'btn ghost sm', textContent: t('draft.discard'), onclick: discardDraft }),
+      ]),
+    ]);
+  }
+
+  /** [임시저장] 버튼: 지금 값을 바로 저장한다 */
+  function saveNow() {
+    toast(t(saveDraft({ form: formValues() }) ? 'draft.saved' : 'draft.saveFailed'));
+  }
 
   function currentRequest() {
     const result = buildMeetingRequest(state);
@@ -76,8 +129,10 @@ export async function render(container, params = {}) {
     if (!request) return draw();
     const fallback = () => toast(t('meeting.nextNotReady'));
     try {
-      const form = { purpose: state.purpose, date: state.date, hour: state.hour, min: state.min };
-      Promise.resolve(go(renderParticipants, container, { ...params, request }, { back: { ...params, form } })).catch(fallback);
+      const form = formValues();
+      saveDraft({ form, request }); // 출발지 입력에서 이어서 할 수 있게 조건을 함께 저장(#17)
+      const next = { ...params, request, form, ...(carried ? { participants: carried } : {}) };
+      Promise.resolve(go(renderParticipants, container, next, { back: { ...params, form } })).catch(fallback);
     } catch {
       fallback();
     }
@@ -154,6 +209,7 @@ export async function render(container, params = {}) {
 
   function draw() {
     screen.replaceChildren(
+      ...[draftBlock()].filter(Boolean),
       el('div', { className: 'hero' }, [
         el('div', { className: 'eyebrow', textContent: t('meeting.eyebrow') }),
         el('h1', { textContent: t('meeting.title') }),
@@ -170,7 +226,7 @@ export async function render(container, params = {}) {
       el('button', { type: 'button', className: 'btn', textContent: t('meeting.next'), disabled: !state.purpose, onclick: goNext }),
     ];
     actions.push(el('div', { className: 'row2' }, [
-      el('button', { type: 'button', className: 'btn ghost sm', textContent: t('meeting.save'), onclick: () => toast(t('meeting.saveSoon')) }),
+      el('button', { type: 'button', className: 'btn ghost sm', textContent: t('meeting.save'), onclick: saveNow }),
       el('button', { type: 'button', className: 'btn ghost sm', textContent: t('meeting.mine'), onclick: () => toast(t('meeting.mineSoon')) }),
     ]));
     foot.replaceChildren(...actions);
