@@ -10,6 +10,7 @@
 import { loadData } from './lib/data.js';
 import { readShareUrl } from './lib/share-link.js';
 import { getHostToken } from './lib/storage.js';
+import { startAt } from './lib/shell.js';
 import { render as renderJoin } from './screens/join.js';
 import { render as renderMeetingForm } from './screens/meeting-form.js';
 import { render as renderParticipants } from './screens/participants.js';
@@ -35,12 +36,13 @@ async function start() {
     console.warn('데이터를 불러오지 못했습니다', e);
   }
   const target = readShareUrl(location);
+  // 첫 화면은 startAt으로 연다: 화면 이동 기록을 비우고 '뒤로가기 두 번이면 종료' 자리를 만든다(#44).
   // FUNC-023(#21): 방을 만든 총무 기기(총무 토큰 있음)는 같은 링크로 총무 입력 현황 화면을 연다(새로고침·다시 열기).
-  if (target.type === 'room' && getHostToken(target.room_id)) return renderParticipants(app, { room_id: target.room_id });
-  if (target.type === 'room') return renderJoin(app, { room_id: target.room_id });
-  if (target.type === 'confirmation') return openRoute(app, { confirmation: target.confirmation });
-  if (target.type === 'invalid') return renderLinkError(app, { reason: target.reason });
-  return renderMeetingForm(app);
+  if (target.type === 'room' && getHostToken(target.room_id)) return startAt(renderParticipants, app, { room_id: target.room_id });
+  if (target.type === 'room') return startAt(renderJoin, app, { room_id: target.room_id });
+  if (target.type === 'confirmation') return startAt(openRoute, app, { confirmation: target.confirmation });
+  if (target.type === 'invalid') return startAt(renderLinkError, app, { reason: target.reason });
+  return startAt(renderMeetingForm, app);
 }
 
 window.addEventListener('hashchange', start);

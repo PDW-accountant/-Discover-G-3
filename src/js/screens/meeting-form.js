@@ -6,7 +6,7 @@
 // 화면 모양은 '모이자 UI 프로토타입2'를 따른다.
 
 import { t } from '../lib/data.js';
-import { createShell, el } from '../lib/shell.js';
+import { createShell, el, go } from '../lib/shell.js';
 import { characterNode } from '../lib/characters.js';
 import { PURPOSES } from '../config.js';
 import { render as renderParticipants } from './participants.js';
@@ -48,9 +48,10 @@ export function buildMeetingRequest({ purpose, date, hour, min }, now = new Date
 
 /** 화면을 그린다. @param {HTMLElement} container */
 export async function render(container, params = {}) {
-  const initial = defaultArrival();
+  // 출발지 입력에서 뒤로 돌아오면(#44) params.form으로 목적·도착 날짜·시각을 다시 채운다.
+  const initial = { purpose: null, ...defaultArrival(), ...params.form };
   const state = {
-    purpose: null, dropdownOpen: false,
+    purpose: initial.purpose, dropdownOpen: false,
     date: initial.date, hour: initial.hour, min: initial.min,
     message: '',
   };
@@ -71,7 +72,8 @@ export async function render(container, params = {}) {
     if (!request) return draw();
     const fallback = () => toast(t('meeting.nextNotReady'));
     try {
-      Promise.resolve(renderParticipants(container, { ...params, request })).catch(fallback);
+      const form = { purpose: state.purpose, date: state.date, hour: state.hour, min: state.min };
+      Promise.resolve(go(renderParticipants, container, { ...params, request }, { back: { ...params, form } })).catch(fallback);
     } catch {
       fallback();
     }

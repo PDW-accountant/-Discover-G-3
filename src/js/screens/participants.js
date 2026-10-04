@@ -12,7 +12,7 @@
 
 import { loadData, t } from '../lib/data.js';
 import { lineBadge, searchStations } from '../lib/stations.js';
-import { createShell, el } from '../lib/shell.js';
+import { createShell, el, go } from '../lib/shell.js';
 import { characterNode } from '../lib/characters.js';
 import { createRoom, deleteParticipant, getRoom, getStatus, saveParticipant } from '../lib/api-client.js';
 import { getHostToken, setHostToken } from '../lib/storage.js';
@@ -234,7 +234,7 @@ export async function render(container, params = {}) {
     hostToken = created.host_token;
     joinUrl = created.join_url;
     // 주소를 방 링크로 바꿔 둔다. 새로고침하거나 다른 앱을 보고 돌아와도 main.js가 이 총무 화면을 다시 연다.
-    history.replaceState(null, '', `?room=${encodeURIComponent(roomId)}`);
+    history.replaceState(history.state, '', `?room=${encodeURIComponent(roomId)}`); // 뒤로가기 기록(state, #44)은 그대로 둔다
 
     const { save, keep } = splitRowsForRoom(rows);
     for (const row of save) { // 순서대로 저장해 명단 순서가 입력 순서와 같게 한다
@@ -488,7 +488,8 @@ export async function render(container, params = {}) {
     const next = { ...params, participants: toParticipants(rows) };
     const fallback = () => toast(t('participants.findSoon'));
     try {
-      Promise.resolve(renderResult(container, next)).catch(fallback);
+      // 결과에서 뒤로 돌아오면(#44) 입력한 줄(닉네임·역·인원)을 그대로 되살린다
+      Promise.resolve(go(renderResult, container, next, { back: { ...params, participants: toParticipants(rows) } })).catch(fallback);
     } catch {
       fallback(); // 추천 결과 화면(#7)이 아직 없으면 안내만
     }
@@ -501,7 +502,7 @@ export async function render(container, params = {}) {
     const fallback = () => { toast(t('participants.findSoon')); if (!timer && !idle) startPolling(); };
     stopPolling();
     try {
-      Promise.resolve(renderResult(container, { ...params, request, participants, room_id: roomId })).catch(fallback);
+      Promise.resolve(go(renderResult, container, { ...params, request, participants, room_id: roomId }, { back: { ...params, room_id: roomId } })).catch(fallback);
     } catch {
       fallback();
     }
