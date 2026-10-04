@@ -42,3 +42,42 @@ button:disabled{cursor:default;opacity:.4}
 .count-bar button+button{border-left:2px solid var(--ink)}
 .btn-primary{width:100%;margin-top:8px;padding:14px;border:0;border-radius:4px;background:var(--accent);color:#fff;font-size:18px;font-weight:800}
 .error{min-height:1em;color:#cf222e}
+/* 첫 화면: 모임 조건 입력 (FUNC-021) — 모이자 UI 프로토타입2 기준. .meeting 안에서만 적용 */
+.meeting{--accent:#D9512C;--accent-ink:#C2441F;--accent-mist:#FBF2EC;--paper:#F9F6F1;--card:#fff;--ink:#2B2A28;--muted:#6E6862;--hair:#E7E0D7;word-break:keep-all;color:var(--ink)}
+.meeting .bar{display:flex;justify-content:center;padding:6px 0 18px;border-bottom:1px solid var(--hair);margin-bottom:22px}
+.meeting .logo{font-weight:900;font-size:24px;line-height:1}
+.meeting .eyebrow{display:flex;align-items:center;gap:10px;color:var(--accent-ink);font-size:13px;font-weight:700}
+.meeting .eyebrow::before{content:"";width:26px;height:2px;background:var(--accent);flex:none}
+.meeting .hero{margin:0 0 28px}
+.meeting .hero h1{font-size:34px;line-height:1.2;margin:12px 0 10px;white-space:pre-line}
+.meeting .hero p{margin:0;color:var(--muted);font-size:15px}
+.meeting .block{margin-bottom:28px}
+.meeting h2.q{display:flex;align-items:baseline;gap:10px;margin:0 0 14px;font-size:19px;line-height:1.35}
+.meeting h2.q .n{color:var(--accent)}
+.meeting .dd{border:1px solid var(--hair);border-radius:14px;overflow:hidden;background:var(--card)}
+.meeting .dd-head{width:100%;display:flex;justify-content:space-between;align-items:center;padding:15px 16px;border:0;background:var(--card);font-weight:700;font-size:16px}
+.meeting .dd-head .ph{color:var(--muted);font-weight:500}
+.meeting .chev{width:12px;height:12px;border-right:2px solid var(--accent);border-bottom:2px solid var(--accent);transform:rotate(45deg) translate(-3px,-3px);transition:transform .2s}
+.meeting .dd.open .chev{transform:rotate(225deg)}
+.meeting .dd-list{border-top:1px solid var(--hair)}
+.meeting .dd-list[hidden]{display:none}
+.meeting .dd-opt{width:100%;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:14px 16px;border:0;border-bottom:1px solid var(--hair);background:var(--card);text-align:left;font-weight:500;font-size:15px}
+.meeting .dd-opt:last-child{border-bottom:0}
+.meeting .dd-opt:hover{background:var(--accent-mist)}
+.meeting .dd-opt .em{font-size:12px;color:var(--muted)}
+.meeting .time{display:grid;grid-template-columns:1fr auto 1fr auto;align-items:center;gap:10px}
+.meeting .time select,.meeting .field{width:100%;border:1px solid var(--hair);border-radius:14px;background:var(--card);padding:12px 14px;font:inherit;font-size:22px;font-weight:700;text-align:center}
+.meeting .time .u{font-size:18px;font-weight:700;color:var(--muted)}
+.meeting .field{font-size:15px;font-weight:500;text-align:left}
+.meeting .opt-label{display:block;margin:16px 0 8px;font-size:13px;font-weight:500;color:var(--muted)}
+.meeting .foot{display:grid;gap:10px;margin-top:8px}
+.meeting .btn{display:flex;align-items:center;justify-content:center;width:100%;padding:16px 18px;border:0;border-radius:999px;background:var(--accent-ink);color:#fff;font-size:16px;font-weight:700}
+.meeting .btn:hover{background:#A9391A}
+.meeting .btn.ghost{background:var(--card);color:var(--ink);border:1px solid var(--hair)}
+.meeting .btn.ghost:hover{background:var(--accent-mist)}
+.meeting .btn:disabled{background:#E9E3DB;color:#8C847B}
+.meeting .lead{margin:0 0 10px;font-size:14px;color:var(--muted)}
+.meeting .link-box{display:grid;gap:10px;margin-bottom:12px;padding:16px;border:1px solid var(--hair);border-radius:18px;background:var(--accent-mist)}
+.meeting .link-box input{width:100%;padding:12px 14px;border:1px solid var(--hair);border-radius:12px;background:var(--card);font:inherit;font-size:14px}
+.meeting .link-box .hint{margin:0}
+.meeting :focus-visible{outline:2px solid var(--accent-ink);outline-offset:2px}

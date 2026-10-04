@@ -7,6 +7,7 @@
 
 import { loadData } from './lib/data.js';
 import { render as renderJoin } from './screens/join.js';
+import { render as renderMeetingForm } from './screens/meeting-form.js';
 
 async function start() {
   const app = document.getElementById('app');
@@ -18,7 +19,8 @@ async function start() {
   // FUNC-022(#20): ?room= 은 참여자 화면이 방 상태를 보고 입력·경로·안내 화면 중 하나를 연다.
   const roomId = new URLSearchParams(location.search).get('room');
   if (roomId) return renderJoin(app, { room_id: roomId });
-  // TODO(FUNC-014): 주소에 따라 screens/의 render(app, ...)를 호출한다.
+  // TODO(FUNC-014): #d= 공유 링크 등 나머지 주소를 처리한다. 지금은 그 외 모두 첫 화면(FUNC-021: 링크로 입력받기 확인용).
+  return renderMeetingForm(app);
 }
 
 start();
