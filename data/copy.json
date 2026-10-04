@@ -44,6 +44,7 @@
   "departure.summary": "{line} 승차 · 환승 {count}회",
   "departure.summaryDirect": "{line} 승차 · 환승 없음",
   "nav.exitHint": "한 번 더 누르면 종료돼요",
+  "nav.closeHint": "더 돌아갈 화면이 없어요. 브라우저 창을 닫아 주세요",
   "link.invalid": "링크가 만료되었거나 올바르지 않아요",
   "link.invalidHint": "링크를 보낸 사람에게 다시 받아 주세요",
   "link.home": "처음으로",
