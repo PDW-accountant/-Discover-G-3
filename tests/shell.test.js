@@ -19,7 +19,7 @@ function fakeWindow() {
     },
   };
   win.addEventListener = (type, f) => { (win.listeners[type] ??= []).push(f); };
-  win.touch = () => (win.listeners.pointerdown ?? []).forEach((f) => f({})); // 화면을 누름
+  win.touch = () => (win.listeners.click ?? []).forEach((f) => f({})); // 화면을 누름(탭이 끝난 뒤 click)
   return win;
 }
 

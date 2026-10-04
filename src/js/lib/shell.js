@@ -81,8 +81,9 @@ export function createNavigator(win, { onExitHint = () => {}, onFallbackHome = g
     }
     if (usingHistory && !listening) {
       win.addEventListener('popstate', (event) => onPop(event.state));
-      // 누르는 순간(pointerdown)이 click보다 먼저라, 첫 화면의 버튼을 누르면 자리가 먼저 생기고 그다음 화면 이동 기록이 쌓인다
-      win.addEventListener('pointerdown', onUserActivation, true);
+      // 휴대폰은 손가락이 닿는 순간(pointerdown)이 아니라 탭이 끝날 때를 사용자 동작으로 인정하므로 click에서 만든다.
+      // 캡처 단계라 버튼 자신의 click보다 먼저 실행된다 → 첫 화면에서 버튼을 누르면 자리가 먼저 생기고 그다음 화면 이동 기록이 쌓인다
+      win.addEventListener('click', onUserActivation, true);
       win.addEventListener('keydown', onUserActivation, true);
       listening = true;
     }
