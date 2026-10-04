@@ -1,7 +1,8 @@
 // 앱 전체 설정값. 숫자를 바꿀 때는 이 파일만 고칩니다.
 
 // 카카오 JavaScript 키 (지도 SDK, 카카오톡 공유용). 등록 도메인에서만 동작하는 공개용 키. 값은 대원이 넣습니다.
-export const KAKAO_JS_KEY = '';
+// 등록 도메인(카카오 디벨로퍼스 JavaScript SDK 도메인·제품 링크 관리 웹 도메인): https://eodiga3.vercel.app
+export const KAKAO_JS_KEY = '9fe6b06838b0a44ca0031e9af2a9ed25';
 
 export const PURPOSES = ['회식', '회의', '오락'];     // 모임 목적 저장값 (화면·서버·데이터 공통)
 export const MIN_PARTICIPANTS = 3;
