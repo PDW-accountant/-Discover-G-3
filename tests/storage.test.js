@@ -136,3 +136,60 @@ test("FUNC-019: 목적을 골랐거나 닉네임·출발역을 넣었을 때만 
   assert.equal(hasDraftContent({ form }), true);
   assert.equal(hasDraftContent({ participants: [{ nickname: '', origin_station_id: 'S1' }] }), true);
 });
+
+// ---------- FUNC-020 내 모임 목록 (#18) ----------
+
+const confirmation = (shareUrl, extra = {}) => ({ v: 1, p: '회식', a: '2026-10-08T10:00:00.000Z', s: 'S0153', pl: 'P-1', share_url: shareUrl, people: [], ...extra });
+
+test("FUNC-020: 방을 만들면 '입력 받는 중', 확정하면 같은 방 항목이 '확정'으로 바뀐다(두 줄이 되지 않는다)", async () => {
+  const { addRoomMeeting, addMeeting, listMeetings } = await load();
+  addRoomMeeting({ room_id: 'room1234567', purpose: '회식', arrival_time: '2026-10-08T10:00:00.000Z', url: 'https://x/?room=room1234567' });
+  let list = listMeetings();
+  assert.equal(list.length, 1);
+  assert.deepEqual({ key: list[0].key, status: list[0].status, room_id: list[0].room_id }, { key: 'room:room1234567', status: '입력중', room_id: 'room1234567' });
+  addMeeting(confirmation('https://x/?room=room1234567'));
+  list = listMeetings();
+  assert.equal(list.length, 1);
+  assert.deepEqual({ status: list[0].status, station_id: list[0].station_id, place_id: list[0].place_id, url: list[0].url },
+    { status: '확정', station_id: 'S0153', place_id: 'P-1', url: 'https://x/?room=room1234567' });
+});
+
+test('FUNC-020: 방 없이 확정한 모임은 공유 링크(#d=)로 따로 들어가고, 최근 것이 위', async () => {
+  const { addRoomMeeting, addMeeting, listMeetings } = await load();
+  addRoomMeeting({ room_id: 'room1234567', purpose: '오락', arrival_time: '2026-10-09T10:00:00.000Z', url: 'https://x/?room=room1234567' }, new Date(2026, 9, 4, 10));
+  addMeeting(confirmation('https://x/#d=abc'), new Date(2026, 9, 4, 11));
+  assert.deepEqual(listMeetings().map((m) => [m.key, m.status]), [['https://x/#d=abc', '확정'], ['room:room1234567', '입력중']]);
+});
+
+test('FUNC-020: 20건을 넘으면 오래된 것부터 지운다', async () => {
+  const { addMeeting, listMeetings } = await load();
+  for (let i = 0; i < 23; i++) addMeeting(confirmation(`https://x/#d=${i}`));
+  const list = listMeetings();
+  assert.equal(list.length, 20);
+  assert.equal(list[0].key, 'https://x/#d=22');
+  assert.ok(!list.some((m) => m.key === 'https://x/#d=0'));
+});
+
+test('FUNC-020: 삭제하면 목록에서 지우고, 방 항목이면 이 기기의 총무 토큰도 지운다', async () => {
+  const { addRoomMeeting, addMeeting, listMeetings, removeMeeting, setHostToken, getHostToken } = await load();
+  setHostToken('room1234567', 'host-token-12345');
+  addRoomMeeting({ room_id: 'room1234567', purpose: '회식', arrival_time: '2026-10-08T10:00:00.000Z', url: 'https://x/?room=room1234567' });
+  addMeeting(confirmation('https://x/#d=abc'));
+  removeMeeting('room:room1234567');
+  assert.deepEqual(listMeetings().map((m) => m.key), ['https://x/#d=abc']);
+  assert.equal(getHostToken('room1234567'), null);
+  removeMeeting('https://x/#d=abc');
+  assert.deepEqual(listMeetings(), []);
+});
+
+test('FUNC-020: 저장소가 막히거나 값이 깨져도 빈 목록으로 오류 없이', async () => {
+  const { addMeeting, listMeetings, removeMeeting } = await load();
+  store['eodiga3:meetings'] = '{"깨진":';
+  assert.deepEqual(listMeetings(), []);
+  store['eodiga3:meetings'] = JSON.stringify([null, { key: 1 }, { key: 'k', url: 'u' }]);
+  assert.deepEqual(listMeetings().map((m) => m.key), ['k']);
+  blocked = true;
+  assert.equal(addMeeting(confirmation('https://x/#d=1')), false);
+  assert.deepEqual(listMeetings(), []);
+  removeMeeting('k');
+});

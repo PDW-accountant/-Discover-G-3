@@ -104,6 +104,24 @@ export async function deleteParticipant(roomId, participantId, hostToken) {
 }
 
 /**
+ * FUNC-020(#18) 입력 받는 중인 방 지우기 (총무만, 내 약속 목록에서 삭제할 때). 토큰은 헤더로 보낸다.
+ * @returns {Promise<{ok:true}|{error:string}>} 실패하면 { error }: 'not_found' | 'forbidden' | 'confirmed' | 'invalid' | 'unavailable'
+ */
+export async function deleteRoom(roomId, hostToken) {
+  try {
+    const res = await fetch(`/api/room?id=${encodeURIComponent(roomId)}`, {
+      method: 'DELETE',
+      headers: hostToken ? { 'x-host-token': hostToken } : {},
+    });
+    const data = await res.json().catch(() => null);
+    if (res.ok && data?.ok === true) return { ok: true };
+    return { error: data?.error ?? 'unavailable' };
+  } catch {
+    return { error: 'unavailable' };
+  }
+}
+
+/**
  * FUNC-012 모임 확정 정보를 방에 저장 (총무만).
  * @param {string} roomId
  * @param {MeetingConfirmation} confirmation share_url은 보내지 않는다(서버가 형식 검사 후 버림)

@@ -1,6 +1,6 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { saveParticipant, createRoom, getStatus, confirmRoom, getRoom, deleteParticipant } from '../src/js/lib/api-client.js';
+import { saveParticipant, createRoom, getStatus, confirmRoom, getRoom, deleteParticipant, deleteRoom } from '../src/js/lib/api-client.js';
 
 const realFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = realFetch; });
@@ -226,4 +226,26 @@ test('NFR-011: 삭제 요청도 서버가 없거나 응답이 이상하면 unava
     fakeFetch(respond);
     assert.deepEqual(await deleteParticipant('room1234567', 'p_abcdefgh', 'host-token-12345'), { error: 'unavailable' });
   }
+});
+
+// ---- FUNC-020(#18): deleteRoom (내 약속 목록에서 입력 받는 중인 방 지우기) ----
+test('#18: 방 지우기는 DELETE /api/room?id= 로 보내고 총무 토큰은 주소가 아니라 헤더로', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options) => { calls.push({ url, options }); return json(200, { ok: true }); };
+  assert.deepEqual(await deleteRoom('room1234567', 'host-token-12345'), { ok: true });
+  assert.equal(calls[0].url, '/api/room?id=room1234567');
+  assert.equal(calls[0].options.method, 'DELETE');
+  assert.equal(calls[0].options.headers['x-host-token'], 'host-token-12345');
+  assert.ok(!calls[0].url.includes('host-token'));
+});
+
+test('#18·NFR-011: 방 지우기가 거절되거나 서버가 없어도 예외 없이 { error }', async () => {
+  for (const [status, error] of [[403, 'forbidden'], [404, 'not_found'], [409, 'confirmed'], [503, 'unavailable']]) {
+    globalThis.fetch = async () => json(status, { error });
+    assert.deepEqual(await deleteRoom('room1234567', 'host-token-12345'), { error });
+  }
+  globalThis.fetch = async () => { throw new TypeError('Failed to fetch'); }; // Redis·서버 없이 실행
+  assert.deepEqual(await deleteRoom('room1234567', 'host-token-12345'), { error: 'unavailable' });
+  globalThis.fetch = async () => new Response('<html>Not Found</html>', { status: 404 }); // 간이 서버(api 없음)
+  assert.deepEqual(await deleteRoom('room1234567', 'host-token-12345'), { error: 'unavailable' });
 });
