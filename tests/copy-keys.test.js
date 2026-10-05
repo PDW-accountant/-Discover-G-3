@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 // 실행: npm test
 // 화면 문구는 코드에 직접 쓰지 않고 data/copy.json에서 t('키')로 읽는다(CLAUDE.md 5장).
@@ -19,7 +20,7 @@ function jsFiles(dir) {
 
 // 주석을 뺀 코드만 본다(주석의 t('키', { 값 }) 같은 설명 예시는 검사하지 않는다). 'https://' 같은 주소 속 //는 남긴다.
 const stripComments = (code) => code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1');
-const sources = jsFiles(new URL('src/js/', root).pathname.replace(/^\/([A-Za-z]:)/, '$1')).map((path) => [path, stripComments(readFileSync(path, 'utf8'))]);
+const sources = jsFiles(fileURLToPath(new URL('src/js/', root))).map((path) => [path, stripComments(readFileSync(path, 'utf8'))]);
 
 // 글자 그대로 쓴 키: t('result.loading'), t("…")
 const literalKeys = new Set();
