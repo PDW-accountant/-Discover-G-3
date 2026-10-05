@@ -18,14 +18,14 @@ test('FUNC-010: 역·목적이 맞는 장소를 order 순으로 최대 3곳', ()
   assert.deepEqual(placesFor(undefined, 'S1', '회식'), []);
 });
 
-test('FUNC-010: 실제 데이터에서 목적 3종 × 후보 역마다 장소 3곳이 나온다', () => {
+test('FUNC-010: 실제 데이터에서 목적 3종 × 후보 역마다 장소 3곳이 나온다 (조사분이 적은 역은 있는 만큼, 0곳은 없다)', () => {
   const read = (name) => JSON.parse(readFileSync(new URL(`../data/${name}.json`, import.meta.url), 'utf8'));
   const places = read('places');
   const candidates = read('candidates');
-  const short = Object.entries(candidates).flatMap(([purpose, ids]) => ids
-    .map((id) => [purpose, id, placesFor(places, id, purpose).length])
-    .filter(([, , n]) => n !== 3));
-  assert.deepEqual(short, []);
+  const counts = Object.entries(candidates).flatMap(([purpose, ids]) => ids.map((id) => [purpose, id, placesFor(places, id, purpose).length]));
+  assert.deepEqual(counts.filter(([, , n]) => n < 1 || n > 3), []);
+  // 3곳이 안 되는 역은 콘텐츠팀 시트(10/6판) 기준으로 여기 적어 둔다. 조사분이 채워지면 지운다
+  assert.deepEqual(counts.filter(([, , n]) => n !== 3), [['회식', 'S1266', 2]]); // 디지털미디어시티 회식 2곳
 });
 
 test("FUNC-011: '보기' 링크는 kakao_url → naver_url → 카카오맵 검색 순", () => {

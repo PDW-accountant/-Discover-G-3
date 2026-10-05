@@ -87,7 +87,7 @@ test('FUNC-016: 검사 결과가 0건이다 (역 이름 불일치·빈 칸·후�
 });
 
 test('FUNC-016: 장소 탭을 places.json으로 바꾼다 (역·목적별 순서, 카카오맵 링크)', () => {
-  assert.equal(result.places.length, 126);
+  assert.equal(result.places.length, 164);
   const first = result.places.find((p) => p.station_id === byName('종로3가').id && p.purpose === '회식' && p.order === 1);
   assert.equal(first.name, '시민식당 본점');
   assert.ok(result.places.every((p) => p.kakao_url.startsWith('https://') && p.reason));
@@ -131,7 +131,7 @@ test('FUNC-016: 이름이 같아도 떨어진 역은 따로, 공식 역 이름�
 });
 
 test('FUNC-016: 후보 역은 시트 초안대로 목적별 8곳 이상, 모두 그래프로 이어진 역', () => {
-  assert.deepEqual([candidates.회식.length, candidates.회의.length, candidates.오락.length], [18, 11, 13]);
+  assert.deepEqual([candidates.회식.length, candidates.회의.length, candidates.오락.length], [23, 16, 16]);
   const inGraph = new Set(graph.edges.map((e) => e.from.split(':')[0]));
   assert.ok(Object.values(candidates).flat().every((id) => inGraph.has(id)));
 });
