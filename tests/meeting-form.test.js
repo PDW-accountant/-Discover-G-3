@@ -65,21 +65,21 @@ test("FUNC-019: '이어서 입력할까요?'의 저장 시각은 오늘이면 �
   assert.equal(formatSavedAt('잘못된 값', now), '');
 });
 
-test('#71: 시 목록에 지하철이 없는 새벽 01~04시가 없다 (0시·5시는 남긴다)', () => {
-  assert.deepEqual(HOURS, ['00', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23']);
+test('#71: 시 목록에 지하철이 없는 새벽 01~05시가 없다 (0시는 남긴다)', () => {
+  assert.deepEqual(HOURS, ['00', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23']);
 });
 
-test('#71: 새벽 01~04시 도착은 거부하고, 0시·5시는 받는다', () => {
-  for (const hour of ['01', '02', '03', '04']) {
+test('#71: 새벽 01~05시 도착은 거부하고, 0시·6시는 받는다', () => {
+  for (const hour of ['01', '02', '03', '04', '05']) {
     assert.deepEqual(buildMeetingRequest({ ...ok, date: '2026-10-05', hour }, now), { error: 'date' }, hour);
   }
-  for (const hour of ['00', '05']) {
+  for (const hour of ['00', '06']) {
     assert.ok(buildMeetingRequest({ ...ok, date: '2026-10-05', hour }, now).request, hour);
   }
 });
 
-test('#71: 되살린 시각(임시저장·뒤로 가기)이 새벽 01~04시면 19:00으로 바꾸고 알린다. 날짜·목적은 그대로', () => {
-  for (const hour of ['01', '02', '03', '04']) {
+test('#71: 되살린 시각(임시저장·뒤로 가기)이 새벽 01~05시면 19:00으로 바꾸고 알린다. 날짜·목적은 그대로', () => {
+  for (const hour of ['01', '02', '03', '04', '05']) {
     assert.deepEqual(
       restoreTime({ purpose: '회식', date: '2026-10-07', hour, min: '30' }),
       { form: { purpose: '회식', date: '2026-10-07', hour: '19', min: '00' }, hourReset: true },
@@ -89,7 +89,7 @@ test('#71: 되살린 시각(임시저장·뒤로 가기)이 새벽 01~04시면 1
 });
 
 test('#71: 되살린 시각이 고를 수 있는 시각이면 그대로 둔다', () => {
-  for (const hour of ['00', '05', '19', '23']) {
+  for (const hour of ['00', '06', '19', '23']) {
     const form = { purpose: '회의', date: '2026-10-07', hour, min: '40' };
     assert.deepEqual(restoreTime(form), { form, hourReset: false }, hour);
   }

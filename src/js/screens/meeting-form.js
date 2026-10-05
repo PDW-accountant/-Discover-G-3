@@ -18,7 +18,7 @@ import { render as renderResult } from './result.js';
 import { render as renderMyMeetings } from './my-meetings.js';
 
 const MINUTES = ['00', '10', '20', '30', '40', '50'];
-const EXCLUDED_HOURS = ['01', '02', '03', '04']; // 지하철이 다니지 않는 새벽은 고를 수 없다(#71). 0시(막차 무렵)·5시(첫차 무렵)는 남긴다
+const EXCLUDED_HOURS = ['01', '02', '03', '04', '05']; // 지하철이 다니지 않는 새벽은 고를 수 없다(#71). 0시(막차 무렵)는 남긴다
 export const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).filter((hour) => !EXCLUDED_HOURS.includes(hour));
 const DEFAULT_HOUR = '19';
 const DEFAULT_MINUTE = '00';
@@ -38,7 +38,7 @@ export function defaultArrival(now = new Date()) {
 }
 
 /**
- * 되살린 입력값(임시저장·뒤로 가기)의 시각이 고를 수 없는 새벽(01~04시)이면 기본 시각 19:00으로 바꾼다(#71). 날짜·목적은 그대로.
+ * 되살린 입력값(임시저장·뒤로 가기)의 시각이 고를 수 없는 새벽(01~05시)이면 기본 시각 19:00으로 바꾼다(#71). 날짜·목적은 그대로.
  * @returns {{form, hourReset: boolean}} hourReset이면 화면에 안내(meeting.error.hour)를 띄운다
  */
 export function restoreTime(form) {
@@ -96,7 +96,7 @@ export async function render(container, params = {}) {
 
   /**
    * 이어서 입력: 목적·시각을 채우고, 참여자 입력이 있었으면 출발지 입력 화면까지 연다.
-   * 시각이 지났거나 새벽 01~04시라 19:00으로 바꿨으면(#71) 이 화면에서 안내하고 다시 고르게 한다.
+   * 시각이 지났거나 새벽 01~05시라 19:00으로 바꿨으면(#71) 이 화면에서 안내하고 다시 고르게 한다.
    */
   function resumeDraft() {
     const saved = draft;
