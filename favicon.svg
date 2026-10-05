@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="-3 -2.5 32 32">
+<!-- 탭·홈 화면 아이콘 (#76): 상단 로고(src/js/lib/shell.js의 LOGO_SVG)와 같은 그림. 어두운 탭에서도 선이 보이게 앱 바탕색 둥근 사각형을 깐다.
+     로고를 바꾸면 이 파일도 함께 바꾸고 scripts/make-icons.html로 PNG·ICO를 다시 만든다 -->
+<rect x="-3" y="-2.5" width="32" height="32" rx="7" fill="#F9F6F1"/>
+<path d="M5 6 13 12.5M21 6 13 12.5M13 21v-8.5" stroke="#E7C3B4" stroke-width="1.6"/><circle cx="5" cy="6" r="3" fill="#D9512C"/><circle cx="21" cy="6" r="3" fill="#D9512C"/><circle cx="13" cy="21" r="3" fill="#D9512C"/><circle cx="13" cy="12.5" r="3.4" fill="#2B2A28"/>
+</svg>

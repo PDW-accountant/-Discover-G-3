@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<title>아이콘 만들기</title>
+<!-- favicon.svg → apple-touch-icon.png(180×180)·favicon.ico(32×32) (#76). 설치할 것 없음.
+     실행: 간이 웹서버(README '내려받아 실행하기')로 연 뒤 http://localhost:8000/scripts/make-icons.html → 두 링크를 눌러 저장소 루트에 저장 -->
+<body>
+<p id="out">만드는 중…</p>
+<script type="module">
+const PAPER = '#F9F6F1'; // 앱 바탕색(style.css --paper)
+
+const svg = new Image();
+svg.src = '../favicon.svg';
+await svg.decode();
+
+/** favicon.svg를 size×size PNG로. fill이면 바탕을 꽉 채운다(아이폰 홈 화면은 투명한 곳을 검게 칠한다) */
+function draw(size, fill) {
+  const canvas = Object.assign(document.createElement('canvas'), { width: size, height: size });
+  const ctx = canvas.getContext('2d');
+  if (fill) { ctx.fillStyle = PAPER; ctx.fillRect(0, 0, size, size); }
+  ctx.drawImage(svg, 0, 0, size, size);
+  return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+}
+
+/** PNG 하나를 담은 ICO: 머리 6바이트 + 그림 항목 16바이트 + PNG 그대로 */
+function ico(png, size) {
+  const head = new DataView(new ArrayBuffer(22));
+  head.setUint16(2, 1, true);              // 종류 1 = 아이콘
+  head.setUint16(4, 1, true);              // 그림 1개
+  head.setUint8(6, size);
+  head.setUint8(7, size);
+  head.setUint16(10, 1, true);             // 색 면 1
+  head.setUint16(12, 32, true);            // 32비트 색
+  head.setUint32(14, png.size, true);      // PNG 길이
+  head.setUint32(18, 22, true);            // PNG 시작 위치
+  return new Blob([head, png], { type: 'image/x-icon' });
+}
+
+const files = {
+  'apple-touch-icon.png': await draw(180, true),
+  'favicon.ico': ico(await draw(32, false), 32),
+};
+document.querySelector('#out').replaceChildren(...Object.entries(files).map(([name, blob]) => {
+  const p = document.createElement('p');
+  p.append(Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: name, textContent: `${name} 저장` }));
+  return p;
+}));
+</script>
+</body>
+</html>
