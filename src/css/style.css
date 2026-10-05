@@ -123,6 +123,9 @@ h2.q.big{font-size:26px;}
 .time .u{font-family:var(--serif);font-size:18px;font-weight:700;color:var(--muted);}
 .field{font-family:var(--sans);font-size:15px;text-align:left;font-weight:500;}
 .opt-label{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;margin:16px 0 8px;color:var(--muted);}
+/* 첫 화면 2번: 질문 바로 아래 날짜, 그 아래 시·분 (#69) */
+.q + .opt-label{margin-top:0;}
+.field + .time{margin-top:12px;}
 
 /* 버튼 */
 .btn{

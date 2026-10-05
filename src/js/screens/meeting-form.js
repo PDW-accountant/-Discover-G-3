@@ -204,21 +204,24 @@ export async function render(container, params = {}) {
     }, options.map((option) => el('option', { value: option, textContent: option, selected: option === value })));
   }
 
+  // 날짜를 먼저 고르고 시·분을 고른다(#69)
   function timeBlock() {
     const today = formatDateInput(new Date());
     return el('div', { className: 'block' }, [
       el('h2', { className: 'q' }, [el('span', { className: 'n', textContent: '2' }), t('meeting.timeQuestion')]),
+      el('label', { className: 'opt-label', htmlFor: 'meeting-date', textContent: t('meeting.date') }),
+      el('input', {
+        type: 'date', id: 'meeting-date', className: 'field', value: state.date, min: today,
+        // 칸 어디를 눌러도 달력이 바로 열리게(#69). showPicker가 없거나 막히면 브라우저 기본 동작 그대로
+        onclick: (event) => { try { event.target.showPicker?.(); } catch { /* 기본 동작 유지 */ } },
+        onchange: (event) => { state.date = event.target.value; changed(); draw(); },
+      }),
       el('div', { className: 'time' }, [
         select(t('meeting.hour'), HOURS, state.hour, (v) => { state.hour = v; }),
         el('span', { className: 'u', textContent: t('meeting.hour') }),
         select(t('meeting.minute'), MINUTES, state.min, (v) => { state.min = v; }),
         el('span', { className: 'u', textContent: t('meeting.minute') }),
       ]),
-      el('label', { className: 'opt-label', htmlFor: 'meeting-date', textContent: t('meeting.date') }),
-      el('input', {
-        type: 'date', id: 'meeting-date', className: 'field', value: state.date, min: today,
-        onchange: (event) => { state.date = event.target.value; changed(); draw(); },
-      }),
     ]);
   }
 
