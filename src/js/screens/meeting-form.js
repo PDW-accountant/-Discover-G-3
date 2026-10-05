@@ -18,7 +18,8 @@ import { render as renderResult } from './result.js';
 import { render as renderMyMeetings } from './my-meetings.js';
 
 const MINUTES = ['00', '10', '20', '30', '40', '50'];
-const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+const EXCLUDED_HOURS = ['01', '02', '03', '04', '05']; // 지하철이 다니지 않는 새벽은 고를 수 없다(#71). 0시(막차 무렵)는 남긴다
+export const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).filter((hour) => !EXCLUDED_HOURS.includes(hour));
 const DEFAULT_HOUR = '19';
 const DEFAULT_MINUTE = '00';
 
@@ -34,6 +35,15 @@ export function defaultArrival(now = new Date()) {
   const day = new Date(now.getFullYear(), now.getMonth(), now.getDate(), Number(DEFAULT_HOUR), Number(DEFAULT_MINUTE));
   if (day <= now) day.setDate(day.getDate() + 1);
   return { date: formatDateInput(day), hour: DEFAULT_HOUR, min: DEFAULT_MINUTE };
+}
+
+/**
+ * 되살린 입력값(임시저장·뒤로 가기)의 시각이 고를 수 없는 새벽(01~05시)이면 기본 시각 19:00으로 바꾼다(#71). 날짜·목적은 그대로.
+ * @returns {{form, hourReset: boolean}} hourReset이면 화면에 안내(meeting.error.hour)를 띄운다
+ */
+export function restoreTime(form) {
+  if (!EXCLUDED_HOURS.includes(form.hour)) return { form, hourReset: false };
+  return { form: { ...form, hour: DEFAULT_HOUR, min: DEFAULT_MINUTE }, hourReset: true };
 }
 
 /**
@@ -65,11 +75,11 @@ export function formatSavedAt(value, now = new Date()) {
 /** 화면을 그린다. @param {HTMLElement} container */
 export async function render(container, params = {}) {
   // 출발지 입력에서 뒤로 돌아오면(#44) params.form으로 목적·도착 날짜·시각을 다시 채운다.
-  const initial = { purpose: null, ...defaultArrival(), ...params.form };
+  const { form: initial, hourReset } = restoreTime({ purpose: null, ...defaultArrival(), ...params.form });
   const state = {
     purpose: initial.purpose, dropdownOpen: false,
     date: initial.date, hour: initial.hour, min: initial.min,
-    message: '',
+    message: hourReset ? t('meeting.error.hour') : '',
   };
 
   const { screen, foot, toast } = createShell(container, { nav: false });
@@ -84,15 +94,20 @@ export async function render(container, params = {}) {
   if (!hasDraftContent(draft)) draft = null;
   let carried = params.participants ?? null; // 이어서 입력한 참여자 줄. 다음 화면으로 넘긴다
 
-  /** 이어서 입력: 목적·시각을 채우고, 참여자 입력이 있었으면 출발지 입력 화면까지 연다(시각이 지났으면 이 화면에서 다시 고르게). */
+  /**
+   * 이어서 입력: 목적·시각을 채우고, 참여자 입력이 있었으면 출발지 입력 화면까지 연다.
+   * 시각이 지났거나 새벽 01~05시라 19:00으로 바꿨으면(#71) 이 화면에서 안내하고 다시 고르게 한다.
+   */
   function resumeDraft() {
     const saved = draft;
     draft = null;
-    Object.assign(state, { purpose: null, ...defaultArrival() }, saved.form ?? {});
+    const { form, hourReset } = restoreTime({ purpose: null, ...defaultArrival(), ...saved.form });
+    Object.assign(state, form);
     carried = saved.participants?.length ? saved.participants : null;
     const request = buildMeetingRequest(state).request;
-    if (carried && request) return goNext();
-    if (carried) currentRequest(); // 약속 시각이 지났으면 '현재 이후 시각을 골라 주세요' 안내
+    if (carried && request && !hourReset) return goNext();
+    if (hourReset) state.message = t('meeting.error.hour');
+    else if (carried) currentRequest(); // 약속 시각이 지났으면 '현재 이후 시각을 골라 주세요' 안내
     draw();
   }
 
@@ -189,21 +204,24 @@ export async function render(container, params = {}) {
     }, options.map((option) => el('option', { value: option, textContent: option, selected: option === value })));
   }
 
+  // 날짜를 먼저 고르고 시·분을 고른다(#69)
   function timeBlock() {
     const today = formatDateInput(new Date());
     return el('div', { className: 'block' }, [
       el('h2', { className: 'q' }, [el('span', { className: 'n', textContent: '2' }), t('meeting.timeQuestion')]),
+      el('label', { className: 'opt-label', htmlFor: 'meeting-date', textContent: t('meeting.date') }),
+      el('input', {
+        type: 'date', id: 'meeting-date', className: 'field', value: state.date, min: today,
+        // 칸 어디를 눌러도 달력이 바로 열리게(#69). showPicker가 없거나 막히면 브라우저 기본 동작 그대로
+        onclick: (event) => { try { event.target.showPicker?.(); } catch { /* 기본 동작 유지 */ } },
+        onchange: (event) => { state.date = event.target.value; changed(); draw(); },
+      }),
       el('div', { className: 'time' }, [
         select(t('meeting.hour'), HOURS, state.hour, (v) => { state.hour = v; }),
         el('span', { className: 'u', textContent: t('meeting.hour') }),
         select(t('meeting.minute'), MINUTES, state.min, (v) => { state.min = v; }),
         el('span', { className: 'u', textContent: t('meeting.minute') }),
       ]),
-      el('label', { className: 'opt-label', htmlFor: 'meeting-date', textContent: t('meeting.date') }),
-      el('input', {
-        type: 'date', id: 'meeting-date', className: 'field', value: state.date, min: today,
-        onchange: (event) => { state.date = event.target.value; changed(); draw(); },
-      }),
     ]);
   }
 
