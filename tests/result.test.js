@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { arrivalClock, computeResult, routeCardInfo, roundUpTo5 } from '../src/js/screens/result.js';
+import { arrivalClock, compareKind, computeResult, routeCardInfo, roundUpTo5 } from '../src/js/screens/result.js';
 
 // 실행: npm test
 
@@ -36,6 +36,27 @@ test('FUNC-009: 1위 결과로 확정 정보를 만들 수 있는 형태다 (tra
   const { top } = computeResult(data, { purpose: '회의' }, participants);
   for (const p of participants) assert.ok(Number.isInteger(top.travel_times[p.participant_id].minutes));
   assert.ok(top.station.id && top.station.name);
+});
+
+test("FUNC-008: 비교 문구 — 단축 분이 있으면 '덜 걸려요', 중간 지점이 곧 1위면 '이미 가장 공평', 둘 다 아니면 숨김", () => {
+  const top = { id: 'S1', name: '을지로3가' };
+  assert.equal(compareKind({ midpoint_station: { id: 'S2' }, saved_minutes: 4 }, top), 'compare');
+  assert.equal(compareKind({ midpoint_station: { id: 'S1' }, saved_minutes: 0 }, top), 'compareSame');
+  assert.equal(compareKind({ midpoint_station: { id: 'S2' }, saved_minutes: 0 }, top), null); // 연신내·잠실·사당 회식: 1위 을지로3가, 중간 지점 삼각지, 차이 0분
+  assert.equal(compareKind(null, top), null);
+});
+
+test('FUNC-008: 실제 데이터 — 연신내·잠실·사당 회식은 중간 지점(삼각지)과 1위(을지로3가)가 다른데 단축 분이 0이라 문구를 숨긴다', () => {
+  const r = computeResult(data, { purpose: '회식' }, participants);
+  assert.equal(r.top.station.name, '을지로3가');
+  assert.equal(r.comparison.midpoint_station.name, '삼각지');
+  assert.equal(r.comparison.saved_minutes, 0);
+  assert.equal(compareKind(r.comparison, r.top.station), null);
+});
+
+test("FUNC-009: 역 데이터에 없는 출발역이 섞이면 'NaN분' 대신 failed", () => {
+  const stale = [...participants.slice(0, 2), { participant_id: 'p_old', nickname: '옛값', origin_station_id: 'S-SAMPLE-1' }];
+  assert.deepEqual(computeResult(data, { purpose: '회식' }, stale), { error: 'failed' });
 });
 
 test('FUNC-005: 후보 역이 없는 목적이면 noCandidates', () => {
