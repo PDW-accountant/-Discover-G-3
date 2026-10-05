@@ -11,6 +11,8 @@
   --backdrop:#F3EEE7;
   --serif:"Lora","Noto Serif KR",Georgia,serif;
   --sans:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --field-size:16px;       /* 첫 화면 선택칸 글씨: 목적 선택과 시·분 숫자를 같은 크기·굵기로 (#78) */
+  --field-weight:700;
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --backdrop:#24201C; } }
 :root[data-theme="dark"]{ --backdrop:#24201C; }
@@ -98,7 +100,7 @@ h2.q.big{font-size:26px;}
 .dd{border:1px solid var(--hair);border-radius:14px;overflow:hidden;background:var(--card);}
 .dd-head{
   width:100%;display:flex;justify-content:space-between;align-items:center;
-  padding:15px 16px;border:0;background:var(--card);font-weight:700;font-size:16px;
+  padding:15px 16px;border:0;background:var(--card);font-weight:var(--field-weight);font-size:var(--field-size);
 }
 .dd-head .ph{color:var(--muted);font-weight:500;}
 .dd-head .chev{width:12px;height:12px;border-right:2px solid var(--accent);border-bottom:2px solid var(--accent);transform:rotate(45deg) translate(-3px,-3px);transition:transform .2s;}
@@ -118,9 +120,9 @@ h2.q.big{font-size:26px;}
 .time select,.field{
   appearance:none;-webkit-appearance:none;width:100%;
   border:1px solid var(--hair);border-radius:14px;background:var(--card);
-  padding:12px 14px;font-family:var(--serif);font-size:24px;font-weight:700;text-align:center;
+  padding:12px 14px;font-family:var(--serif);font-size:var(--field-size);font-weight:var(--field-weight);text-align:center;
 }
-.time .u{font-family:var(--serif);font-size:18px;font-weight:700;color:var(--muted);}
+.time .u{font-family:var(--serif);font-size:var(--field-size);font-weight:var(--field-weight);color:var(--muted);}
 .field{font-family:var(--sans);font-size:15px;text-align:left;font-weight:500;}
 .opt-label{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;margin:16px 0 8px;color:var(--muted);}
 /* 첫 화면 2번: 질문 바로 아래 날짜, 그 아래 시·분 (#69) */
