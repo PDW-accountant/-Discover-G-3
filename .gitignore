@@ -37,6 +37,7 @@ logs/
 _local/
 scratch/
 .claude/settings.local.json
+.playwright-mcp/
 
 # ── Node·Vercel ────────────────────────
 node_modules/

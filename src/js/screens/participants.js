@@ -59,6 +59,22 @@ export function checkParticipants(rows, nameFor = defaultName) {
   return { ready: problem === null, problem, tooLong, duplicate, missing };
 }
 
+/**
+ * 결과 화면에서 돌아오거나(#44) 임시저장(#17)을 이어서 할 때 저장했던 줄을 입력 줄로 되살린다.
+ * 'N번'으로 채웠던 빈 닉네임은 다시 빈칸으로, 역 데이터에 없는 역 id(옛 데이터로 저장한 임시저장 등)는 비워 다시 고르게 한다
+ * — 모르는 역 id가 결과 계산에 들어가면 시간이 NaN이 된다.
+ * @param {Array<{participant_id?, nickname?, origin_station_id?}>} saved
+ * @param {{isKnown?: (stationId: string) => boolean, nameFor?: (n: number) => string}} options
+ */
+export function restoreRows(saved, { isKnown = () => true, nameFor = defaultName } = {}) {
+  return saved.map((p, i) => ({
+    ...newParticipant(),
+    ...p,
+    nickname: p.nickname === nameFor(i + 1) ? '' : (p.nickname ?? ''),
+    origin_station_id: p.origin_station_id && isKnown(p.origin_station_id) ? p.origin_station_id : null,
+  }));
+}
+
 /** 다음 단계로 넘길 Participant[]. 빈 닉네임은 'N번'으로 채운다(share-link.js의 규칙과 같음). */
 export function toParticipants(rows, nameFor = defaultName) {
   return rows.map((row, i) => ({
@@ -139,10 +155,9 @@ export async function render(container, params = {}) {
 
   // 방 모드의 줄은 '아직 방에 저장하지 않은 줄'(총무가 대신 입력하려고 추가한 줄)만 가진다. 로컬 모드는 기본 3줄.
   // 로컬 모드에서 결과 화면에서 돌아오면 params.participants로 입력을 이어 간다. 빈 닉네임으로 넘겼던 'N번'은 다시 빈칸으로 둔다.
+  // 역 목록을 읽었을 때만 모르는 역 id를 비운다(못 읽었으면 어차피 고를 수도 없다).
   const rows = roomId ? [] : params.participants?.length
-    ? params.participants.map((p, i) => ({
-      ...newParticipant(), ...p, nickname: p.nickname === defaultName(i + 1) ? '' : (p.nickname ?? ''),
-    }))
+    ? restoreRows(params.participants, { isKnown: (id) => !stations.length || Boolean(stationById(id)) })
     : Array.from({ length: MIN_PARTICIPANTS }, newParticipant);
   while (!roomId && rows.length < MIN_PARTICIPANTS) rows.push(newParticipant());
   let openRow = null;     // 출발역 목록이 펼쳐진 줄

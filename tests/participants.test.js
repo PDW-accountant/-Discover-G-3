@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  canFind, checkParticipants, displayName, newParticipant, participantsSignature, progressOf, splitRowsForRoom, toParticipants, trackChange,
+  canFind, checkParticipants, displayName, newParticipant, participantsSignature, progressOf, restoreRows, splitRowsForRoom, toParticipants, trackChange,
 } from '../src/js/screens/participants.js';
 import { POLL_STOP_AFTER_MS } from '../src/js/config.js';
 
@@ -68,6 +68,25 @@ test("FUNC-003: 다음 단계로 넘기는 Participant[]는 빈 닉네임을 'N�
     { participant_id: 'p_c', nickname: '대원', origin_station_id: 'S3' },
   ]);
   assert.equal(rows[0].nickname, ' 희원 '); // 원래 줄은 바꾸지 않는다
+});
+
+test("#44·#17: 돌아온 줄을 되살릴 때 'N번' 자동 이름은 빈칸으로, 역 데이터에 없는 역 id는 비운다", () => {
+  const saved = [
+    { participant_id: 'p_a', nickname: '희원', origin_station_id: 'S1' },
+    { participant_id: 'p_b', nickname: '2번', origin_station_id: 'S-SAMPLE-1' }, // 옛 데이터로 저장한 임시저장
+    { participant_id: 'p_c', nickname: '3번', origin_station_id: null },
+    { nickname: '대원' },                                                     // id가 없으면 새로 만든다
+  ];
+  const rows = restoreRows(saved, { isKnown: (id) => id === 'S1', nameFor });
+  assert.deepEqual(rows.map((r) => [r.participant_id, r.nickname, r.origin_station_id]).slice(0, 3), [
+    ['p_a', '희원', 'S1'], ['p_b', '', null], ['p_c', '', null],
+  ]);
+  assert.match(rows[3].participant_id, /^p_[0-9a-f]{32}$/);
+  assert.equal(rows[3].nickname, '대원');
+  assert.equal(rows[3].origin_station_id, null);
+  assert.equal(check(rows).problem, 'station'); // 비운 줄은 다시 골라야 '찾기'가 켜진다
+  // 역 목록을 못 읽었을 때는 그대로 둔다(기본 isKnown)
+  assert.equal(restoreRows(saved, { nameFor })[1].origin_station_id, 'S-SAMPLE-1');
 });
 
 test("FUNC-021: 링크로 바꿀 때 역까지 고른 줄은 방에 저장하고, 닉네임만 쓴 줄은 남기고, 빈 줄은 버린다", () => {

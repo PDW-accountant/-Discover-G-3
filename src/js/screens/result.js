@@ -36,17 +36,32 @@ export function roundUpTo5(minutes) {
 }
 
 /**
+ * FUNC-008 비교 문구의 종류. 단축 분이 있으면 'compare', 중간 지점이 곧 1위 역이면 'compareSame',
+ * 단축 분이 0인데 중간 지점이 다른 역이면 null(문구를 숨긴다 — '중간 지점이 이미 가장 공평해요'는 1위가 다른 역일 때 틀린 말).
+ * @param {{midpoint_station, saved_minutes}|null} comparison compareWithMidpoint 결과
+ * @param {Station} station 1위 역
+ * @returns {'compare'|'compareSame'|null}
+ */
+export function compareKind(comparison, station) {
+  if (!comparison) return null;
+  if (comparison.saved_minutes > 0) return 'compare';
+  return comparison.midpoint_station.id === station.id ? 'compareSame' : null;
+}
+
+/**
  * FUNC-005 → 006 → 007 → 008 → 010 계산을 한 번에 한다(화면과 분리해 테스트한다).
  * @param {{stations, transitGraph, candidates, places}} data loadData() 결과
  * @param {{purpose}} request
  * @param {Array<{participant_id, nickname, origin_station_id}>} participants
- * @returns {{top, comparison, places, stationsById, expressLines}|{error:'noCandidates'}}
+ * @returns {{top, comparison, places, stationsById, expressLines}|{error:'noCandidates'|'failed'}}
+ *   역 데이터에 없는 출발역이 섞여 시간을 구할 수 없으면(NaN) 'failed' — 화면에 'NaN분'을 보여주지 않는다
  */
 export function computeResult(data, request, participants) {
   const stationsById = Object.fromEntries((data.stations ?? []).map((s) => [s.id, s]));
   const { candidates, midpoint } = pickCandidates(request.purpose, participants, stationsById, data.candidates);
   if (!candidates.length) return { error: 'noCandidates' };
   const times = travelTimes(data.transitGraph ?? null, participants, candidates, stationsById);
+  if (Object.values(times).some((byStation) => Object.values(byStation).some((t) => !Number.isFinite(t.minutes)))) return { error: 'failed' };
   const results = rankStations(candidates, times);
   const top = results[0];
   return {
@@ -145,9 +160,10 @@ export async function render(container, params = {}) {
   let routeOf = null;       // 경로 카드를 보고 있는 참여자 id (#53)
   let detailOpen = false;   // 세부 경로 표를 펼쳤는지. 다른 사람으로 바꿔도 유지한다
 
-  const compareText = comparison && (comparison.saved_minutes > 0
+  const kind = compareKind(comparison, station);
+  const compareText = kind === 'compare'
     ? t('result.compare', { station: comparison.midpoint_station.name, minutes: comparison.saved_minutes })
-    : t('result.compareSame'));
+    : kind === 'compareSame' ? t('result.compareSame') : '';
 
   const who = el('div', { className: 'who' });
   const routeHint = el('p', { className: 'rec-meta', textContent: t('result.routeHint') });
