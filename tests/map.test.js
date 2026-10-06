@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { drawRoute, loadMapSdk, routePoints } from '../src/js/lib/map.js';
+import { LABEL_GAP_PX, LABEL_SIDE_RADIUS_PX, drawRoute, labelSide, lineColor, loadMapSdk, routePoints, routeSegments, routeStops, visibleLabels } from '../src/js/lib/map.js';
+import { lineBadge } from '../src/js/lib/stations.js';
 
 // 실행: npm test
 
@@ -27,7 +28,7 @@ test('FUNC-015: drawRoute는 출발·도착 점과 경로선을 SVG로 그리고
   assert.equal(drawRoute(box, { from, to, steps: [{ line: '2', from, to: mid, minutes: 8 }] }), true);
   assert.match(box.innerHTML, /<svg class="map"/);
   assert.match(box.innerHTML, /<polyline points="[\d.]+,[\d.]+ [\d.]+,[\d.]+ [\d.]+,[\d.]+"/); // 점 3개를 직선으로
-  assert.equal((box.innerHTML.match(/<circle/g) ?? []).length, 4); // 경유 1 + 출발 1 + 도착 2(테두리·가운데)
+  assert.equal((box.innerHTML.match(/<circle/g) ?? []).length, 4); // 중간 역 1 + 출발 1 + 도착 2(테두리·가운데)
 });
 
 test('FUNC-015: 그릴 수 없으면 false (화면은 카카오맵 링크로 대신)', () => {
@@ -59,4 +60,77 @@ test('#16: SDK 스크립트를 불러오지 못하면(등록 안 한 도메인·
   const head = { append: (script) => setTimeout(() => script.onerror(), 0) };
   const doc = { createElement: () => ({}), head };
   assert.equal(await loadMapSdk({ key: 'k', doc, win: {} }), false);
+});
+
+// ---------- #74: 구간별 노선 색 ----------
+
+const sadang = st('사당', 37.4765, 126.9816);
+const chungmuro = st('충무로', 37.5613, 126.9941);
+const euljiro3 = st('을지로3가', 37.5663, 126.9917);
+const transferTrip = {
+  from: sadang, to: euljiro3,
+  steps: [
+    { line: '4', from: sadang, to: chungmuro, minutes: 21, via: [sadang, st('총신대입구', 37.4870, 126.9820), chungmuro] },
+    { line: '3', from: chungmuro, to: euljiro3, minutes: 1, via: [chungmuro, euljiro3] },
+  ],
+};
+
+test('#74: 노선 색은 호선 동그라미(LINE_BADGES)와 같고, 모르는 노선은 회색, 노선이 없으면 앱 강조색', () => {
+  assert.equal(lineColor('4'), lineBadge('4').background);
+  assert.equal(lineColor('신분당'), '#D4003B');
+  assert.equal(lineColor('없는노선'), '#8c959f');
+  assert.equal(lineColor(null), '#D9512C');
+});
+
+test('#74: 구간마다 { line, color, points } — 환승역에서 앞 구간 끝과 다음 구간 시작이 같은 역', () => {
+  const segs = routeSegments(transferTrip);
+  assert.deepEqual(segs.map((s) => [s.line, s.color, s.points.map((p) => p.id)]), [
+    ['4', lineBadge('4').background, ['사당', '총신대입구', '충무로']],
+    ['3', lineBadge('3').background, ['충무로', '을지로3가']],
+  ]);
+  assert.deepEqual(routeStops(segs).map((s) => [s.kind, s.station.id, s.color]), [
+    ['from', '사당', lineBadge('4').background], ['transfer', '충무로', lineBadge('3').background], ['to', '을지로3가', lineBadge('3').background],
+  ]);
+});
+
+test('#74: 이름표는 선 반대쪽 — 가까운 경로 점이 위에 많으면 아래, 아래에 많으면 위, 같거나 없으면 위', () => {
+  const stop = { x: 0, y: 100 };
+  assert.equal(labelSide(stop, [stop, { x: 0, y: 60 }]), 'below');                                  // 선이 위로 (점 자신은 세지 않음)
+  assert.equal(labelSide(stop, [{ x: 0, y: 140 }]), 'above');                                        // 선이 아래로
+  assert.equal(labelSide(stop, [{ x: 10, y: 130 }, { x: 0, y: 60 }, { x: -20, y: 50 }]), 'below');   // 바로 옆은 아래지만 선이 꺾여 위로 → 아래
+  assert.equal(labelSide(stop, [{ x: 0, y: 0 }]), 'above');                                          // 60px 밖의 점은 세지 않음
+  assert.equal(labelSide(stop, [{ x: 0, y: 60 }, { x: 0, y: 140 }]), 'above');                       // 같으면 위
+  assert.equal(labelSide(stop, [undefined]), 'above');
+  assert.equal(labelSide(stop, [{ x: 0, y: 0 }], 200), 'below');                                     // 반지름을 늘리면 센다
+  assert.equal(LABEL_SIDE_RADIUS_PX, 60);
+});
+
+test('#74: 구간이 없으면(직선거리 대체) 출발 → 도착 한 구간, 좌표 없는 역은 빼고, 마지막 구간은 만남 역에서 끝난다', () => {
+  assert.deepEqual(routeSegments({ from, to, steps: [] }).map((s) => [s.line, s.points.map((p) => p.id)]), [[null, ['잠실', '강남']]]);
+  assert.deepEqual(routeSegments({ from, to, steps: [{ line: '2', from, to: mid }] })[0].points.map((p) => p.id), ['잠실', '선릉', '강남']);
+  assert.deepEqual(routeSegments({ from, to, steps: [{ line: '2', from, to: { id: 'X' } }] })[0].points.map((p) => p.id), ['잠실', '강남']);
+  assert.equal(routeSegments({ from: { id: 'X' }, to }), null);
+  assert.deepEqual(routeSegments({ from, to: from, steps: [] }), []);
+});
+
+test('#74: SVG 약도는 구간마다 흰 테두리 선 + 노선 색 실선, 환승역에 점과 이름표', () => {
+  const box = { innerHTML: '' };
+  assert.equal(drawRoute(box, transferTrip), true);
+  const colored = [...box.innerHTML.matchAll(/<polyline [^>]*stroke="(#[0-9A-Fa-f]{6})" stroke-width="5"/g)].map((m) => m[1]);
+  assert.deepEqual(colored, [lineBadge('4').background, lineBadge('3').background]); // 4호선 파랑 → 3호선 주황
+  assert.equal((box.innerHTML.match(/stroke="#fff" stroke-width="9"/g) ?? []).length, 2); // 구간마다 흰 테두리 선
+  assert.doesNotMatch(box.innerHTML, /stroke-dasharray/); // 점선 아님
+  assert.match(box.innerHTML, /route\.mapTransfer/); // 환승 이름표(검사 환경에는 copy.json이 없어 키 이름이 보인다)
+  assert.match(box.innerHTML, /paint-order="stroke"/); // 글씨에 흰 외곽선
+});
+
+test('#74: 이름표 겹침 — 출발·도착은 항상, 환승은 가까운 이름표가 있으면 글씨를 숨긴다', () => {
+  const far = [{ kind: 'from', x: 0, y: 0 }, { kind: 'transfer', x: 100, y: 0 }, { kind: 'to', x: 200, y: 0 }];
+  assert.deepEqual(visibleLabels(far), [true, true, true]);
+  const near = [{ kind: 'from', x: 0, y: 0 }, { kind: 'transfer', x: 190, y: 0 }, { kind: 'to', x: 200, y: 0 }];
+  assert.deepEqual(visibleLabels(near), [true, false, true]); // 도착과 10px 차이 → 숨김
+  const twoTransfers = [{ kind: 'from', x: 0, y: 0 }, { kind: 'transfer', x: 100, y: 0 }, { kind: 'transfer', x: 120, y: 0 }, { kind: 'to', x: 300, y: 0 }];
+  assert.deepEqual(visibleLabels(twoTransfers), [true, true, false, true]); // 앞 환승과 가까운 뒤 환승만 숨김
+  assert.deepEqual(visibleLabels(near, 5), [true, true, true]); // 간격 기준을 줄이면 보인다
+  assert.equal(LABEL_GAP_PX, 40);
 });
