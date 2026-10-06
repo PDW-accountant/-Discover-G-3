@@ -154,3 +154,53 @@ test('FUNC-014: 만료 검사는 지금 꺼져 있고(규칙 미결), 켜면 만
   assert.deepEqual(readShareUrl(url, { now: later, enforceExpiry: true }), { type: 'invalid', reason: 'expired' });
   assert.equal(readShareUrl(url, { now: new Date('2026-10-06T00:00:00+09:00'), enforceExpiry: true }).type, 'confirmation');
 });
+
+// ---------- #88 '기타': 장소 없이 역만 확정 ----------
+
+test("#88: 목적이 '기타'고 장소가 없으면 확정 정보에 pl 키가 아예 없다 (나머지 키·순서는 그대로)", () => {
+  const c = createConfirmation({ ...request, purpose: '기타' }, selected, null, participants);
+  assert.deepEqual(Object.keys(c), ['v', 'p', 'a', 's', 'e', 'people']);
+  assert.equal(c.p, '기타');
+  assert.equal('pl' in c, false);
+  assert.equal(c.people.length, 9);
+});
+
+test("#88: 장소 없는 확정 정보도 링크에 넣었다 빼면 같고, #d= 링크로 열린다", () => {
+  const c = createConfirmation({ ...request, purpose: '기타' }, selected, null, participants);
+  const text = encodeConfirmation(c);
+  assert.match(text, /^[A-Za-z0-9_-]+$/);
+  assert.deepEqual(decodeConfirmation(text), c);
+  assert.equal('pl' in decodeConfirmation(text), false);
+  const opened = readShareUrl(hashUrl(c, SITE));
+  assert.equal(opened.type, 'confirmation');
+  const { share_url, ...rest } = opened.confirmation;
+  assert.deepEqual(rest, c);
+});
+
+test("#88: normalizeConfirmation — pl은 선택 항목: 없음·null은 통과, 있으면 문자열만, 빈 문자열·숫자·객체는 거부", () => {
+  const base = createConfirmation({ ...request, purpose: '기타' }, selected, null, participants);
+  assert.deepEqual(normalizeConfirmation({ ...base, pl: undefined }), base);
+  assert.deepEqual(normalizeConfirmation({ ...base, pl: null }), base);
+  assert.deepEqual(normalizeConfirmation({ ...base, pl: 'P-001' }), { ...base, pl: 'P-001' });
+  for (const bad of ['', 123, {}, [], 'x'.repeat(65)]) assert.equal(normalizeConfirmation({ ...base, pl: bad }), null, JSON.stringify(bad));
+  // 기타가 아니어도 pl이 없으면 형식상 통과한다(장소 데이터가 없어 확정한 경우와 같음) — 화면이 목적으로 판단한다
+  assert.equal(normalizeConfirmation({ ...base, p: '회식' }).p, '회식');
+});
+
+test("#88: 예전 링크(회식·회의·오락 + pl 있음)는 그대로 열린다 — 링크 버전 1 유지", () => {
+  const old = createConfirmation(request, selected, place, participants); // pl 있음
+  assert.equal(old.v, 1);
+  const opened = readShareUrl(hashUrl(old, SITE));
+  assert.equal(opened.type, 'confirmation');
+  assert.equal(opened.confirmation.pl, 'P-001');
+  assert.deepEqual(Object.keys(opened.confirmation), ['v', 'p', 'a', 's', 'pl', 'e', 'people', 'share_url']);
+});
+
+test("#88: '기타'는 허용되는 목적이고, 그 밖의 값은 여전히 손상 링크", () => {
+  const c = createConfirmation({ ...request, purpose: '기타' }, selected, null, participants);
+  assert.equal(decodeConfirmation(encodeConfirmation(c)).p, '기타');
+  for (const p of ['etc', '기 타', '역만 찾기']) {
+    assert.equal(decodeConfirmation(Buffer.from(JSON.stringify({ ...c, p })).toString('base64url')), null, p);
+  }
+  assert.throws(() => createConfirmation({ ...request, purpose: 'etc' }, selected, null, participants));
+});

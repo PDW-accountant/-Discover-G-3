@@ -116,3 +116,20 @@ test('FUNC-012: 저장소가 거절한 이유를 상태 코드와 함께 돌려�
     assert.deepEqual({ status: out.status, body: out.body }, { status, body: { error } }, JSON.stringify(result));
   }
 });
+
+test("#88: 장소 없는 확정 정보(기타)도 서버가 받아 저장한다 — pl 키 없이", () => {
+  const { pl, ...stationOnly } = { ...confirmation, p: '기타' };
+  const out = runWithRedisResult(['ok'], { ...valid, confirmation: stationOnly });
+  assert.equal(out.status, 200);
+  assert.deepEqual(out.body.confirmation, stationOnly);
+  assert.equal('pl' in out.body.confirmation, false);
+  const saved = out.command[out.command.length - 1];
+  assert.deepEqual(JSON.parse(saved), stationOnly);
+});
+
+test("#88: pl이 있어도 문자열이 아니면 400 (형식 검사는 저장소 연결 전에 한다)", async () => {
+  for (const pl of [123, {}, '']) {
+    const out = await call('POST', { ...valid, confirmation: { ...confirmation, pl } });
+    assert.deepEqual(out, { status: 400, body: { error: 'invalid' } }, JSON.stringify(pl));
+  }
+});

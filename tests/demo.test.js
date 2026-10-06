@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { loadScenario } from '../src/js/lib/demo.js';
 import { computeResult } from '../src/js/screens/result.js';
 import { CHARACTER_NAMES, characterSvg } from '../src/js/lib/characters.js';
-import { MAX_PARTICIPANTS, NICKNAME_MAX_LENGTH } from '../src/js/config.js';
+import { DEMO_SCENARIO_COUNT, MAX_PARTICIPANTS, NICKNAME_MAX_LENGTH } from '../src/js/config.js';
 
 // 실행: npm test   (FUNC-004 #5 예시로 해보기)
 
@@ -71,4 +71,10 @@ test('#73: 캐릭터 그림은 같은 틀(viewBox 200×215, 크기 비율)을 �
     assert.match(svg, /^<svg class="ch" viewBox="0 0 200 215" width="40" height="43" aria-hidden="true">/);
     assert.match(svg, /<\/svg>$/);
   }
+});
+
+test("#89: 첫 화면 '예시로 먼저 보기'는 데이터 순서대로 앞 2개(종로3가 회식·강남 회의)만 보여준다 — 데이터 3개는 시연·검사용으로 그대로", () => {
+  assert.equal(DEMO_SCENARIO_COUNT, 2);
+  assert.ok(demo.scenarios.length >= DEMO_SCENARIO_COUNT);
+  assert.deepEqual(demo.scenarios.slice(0, DEMO_SCENARIO_COUNT).map((s) => s.name), ['종로3가 회식', '강남 회의']);
 });

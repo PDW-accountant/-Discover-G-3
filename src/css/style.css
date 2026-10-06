@@ -107,13 +107,13 @@ h2.q.big{font-size:26px;}
 .dd.open .dd-head .chev{transform:rotate(225deg);}
 .dd-list{border-top:1px solid var(--hair);}
 .dd-list[hidden]{display:none;}
+/* 항목은 목적 이름만 가운데 (#87: 예시 글자 삭제) */
 .dd-opt{
-  width:100%;text-align:left;border:0;border-bottom:1px solid var(--hair);background:var(--card);
-  padding:14px 16px;font-weight:500;font-size:15px;display:flex;justify-content:space-between;align-items:center;gap:8px;
+  width:100%;text-align:center;border:0;border-bottom:1px solid var(--hair);background:var(--card);
+  padding:14px 16px;font-weight:500;font-size:15px;display:flex;justify-content:center;align-items:center;gap:8px;
 }
 .dd-opt:last-child{border-bottom:0;}
 .dd-opt:hover{background:var(--accent-mist);}
-.dd-opt .em{font-size:12px;color:var(--muted);}
 
 /* 시간 */
 .time{display:grid;grid-template-columns:1fr auto 1fr auto;align-items:center;gap:10px;}
@@ -141,8 +141,13 @@ h2.q.big{font-size:26px;}
 .btn:disabled{background:#E9E3DB;color:#8C847B;cursor:not-allowed;}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .btn.sm{padding:12px 10px;font-size:14px;font-weight:500;}
-/* 첫 화면 예시로 해보기 (FUNC-004) — 프로토타입에 없어 기존 버튼을 세로로 쌓는다 */
-.demo-list{display:grid;gap:8px;}
+/* 첫 화면 예시로 해보기 (FUNC-004, #89) — 입력 단계(1·2번 카드)와 구분되는 보조 영역: 카드 없이 점선 구분선 + 작은 제목 + 가로로 넘기는 칩 */
+.demo{margin:4px 0 8px;padding-top:14px;border-top:1px dashed var(--hair);}
+.demo .eyebrow{margin-bottom:10px;}
+.demo-chips{display:flex;gap:8px;padding:2px 2px 6px;}
+.demo-chip{flex:1 1 0;text-align:center;border:1px solid var(--accent);border-radius:999px;padding:9px 14px;background:var(--accent-mist);color:var(--accent-ink);font-weight:700;font-size:13px;white-space:nowrap;}
+.demo-chip:hover{background:var(--card);}
+.demo-hint{font-size:12px;color:var(--muted);margin:2px 2px 0;line-height:1.6;}
 
 /* 링크로 입력받기 (FUNC-021) */
 .link-box{display:grid;gap:10px;margin-bottom:12px;padding:16px;border:1px solid var(--hair);border-radius:18px;background:var(--accent-mist);}
@@ -231,6 +236,7 @@ input.p-name.invalid{border-color:#cf222e;}
 .rec .rec-sum{position:relative;margin:14px 0 0;font-weight:700;font-size:15px;color:var(--accent-ink);}
 .rec .rec-meta{position:relative;margin:4px 0 0;font-size:13px;color:var(--muted);line-height:1.5;}
 .list{border:1px solid var(--hair);border-radius:20px;overflow:hidden;background:var(--card);}
+.list>.hint{margin:0;padding:14px 16px 16px;}
 .list-h{padding:16px 16px 12px;font-family:var(--serif);font-weight:700;font-size:18px;display:flex;justify-content:space-between;align-items:baseline;}
 .list-h small{font-family:var(--sans);font-size:12px;font-weight:500;color:var(--muted);}
 .place{padding:14px 16px;border-top:1px solid var(--hair);display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;}

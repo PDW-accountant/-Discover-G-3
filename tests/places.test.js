@@ -22,7 +22,10 @@ test('FUNC-010: 실제 데이터에서 목적 3종 × 후보 역마다 장소 3�
   const read = (name) => JSON.parse(readFileSync(new URL(`../data/${name}.json`, import.meta.url), 'utf8'));
   const places = read('places');
   const candidates = read('candidates');
-  const counts = Object.entries(candidates).flatMap(([purpose, ids]) => ids.map((id) => [purpose, id, placesFor(places, id, purpose).length]));
+  const counts = Object.entries(candidates)
+    .filter(([purpose]) => purpose !== '기타') // 기타는 장소 추천이 없다(#88)
+    .flatMap(([purpose, ids]) => ids.map((id) => [purpose, id, placesFor(places, id, purpose).length]));
+  assert.deepEqual(placesFor(places, candidates.기타[0], '기타'), []); // 기타 장소는 데이터에 없다
   assert.deepEqual(counts.filter(([, , n]) => n < 1 || n > 3), []);
   // 3곳이 안 되는 역은 콘텐츠팀 시트(10/6판) 기준으로 여기 적어 둔다. 조사분이 채워지면 지운다
   assert.deepEqual(counts.filter(([, , n]) => n !== 3), [['회식', 'S1266', 2]]); // 디지털미디어시티 회식 2곳

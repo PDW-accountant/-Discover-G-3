@@ -4,12 +4,13 @@
 // 등록 도메인(카카오 디벨로퍼스 JavaScript SDK 도메인·제품 링크 관리 웹 도메인): https://eodiga3.vercel.app
 export const KAKAO_JS_KEY = '9fe6b06838b0a44ca0031e9af2a9ed25';
 
-export const PURPOSES = ['회식', '회의', '오락'];     // 모임 목적 저장값 (화면·서버·데이터 공통)
+export const PURPOSES = ['회식', '회의', '오락', '기타']; // 모임 목적 저장값 (화면·서버·데이터 공통). '기타'는 장소 추천 없이 역만 찾는다(#88)
 export const MIN_PARTICIPANTS = 3;
 export const MAX_PARTICIPANTS = 9;
 export const NICKNAME_MAX_LENGTH = 6;
 export const CANDIDATE_COUNT = 3;                  // 1차로 추리는 후보 역 수 (FUNC-005)
 export const PLACE_COUNT = 3;                      // 만남 장소 추천 수 (FUNC-010)
+export const DEMO_SCENARIO_COUNT = 2;              // 첫 화면 '예시로 먼저 보기' 버튼 수. 데이터(demo.json)는 3개지만 가로로 넘기지 않게 앞 2개만 (#89 10/6)
 export const POLL_INTERVAL_MS = 5000;              // 총무 화면 입력 현황 갱신 간격 (FUNC-023)
 export const POLL_STOP_AFTER_MS = 10 * 60 * 1000;  // 변화 없으면 자동 확인 중단 (FUNC-023)
 export const RESULT_TIMEOUT_MS = 10000;            // 결과 대기 한도 (NFR-001)

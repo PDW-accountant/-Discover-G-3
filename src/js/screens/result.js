@@ -8,6 +8,7 @@
 // 참여자 칩을 누르면 그 사람의 경로 카드(#53): 출발역 → 만남 역 요약, 오른쪽 위 '+'로 세부 경로 표를 펼치고 '−'로 접는다.
 //   계산은 다시 하지 않고 1위 결과의 travel_times[참여자 id](minutes·transfers·steps)를 쓴다. 표시는 lib/route-steps.js(개인 경로 화면과 같은 모양).
 // '이 장소로 약속 확정하기' → confirm.js render(container, { request, selected_result, place, participants, room_id })
+// 목적이 '기타'(#88)면 장소 목록을 그리지 않고 '이 역으로 약속 확정하기'가 바로 눌린다(place: null).
 // '지금 출발 기준'이라는 표현은 쓰지 않는다(외부 조회가 없어 시점 개념이 없음).
 
 import { loadData, t } from '../lib/data.js';
@@ -156,6 +157,7 @@ export async function render(container, params = {}) {
 
   const { top, comparison, places, stationsById, expressLines } = outcome;
   const station = top.station;
+  const stationOnly = request.purpose === '기타'; // 장소 추천 없이 역만 확정(#88)
   let selected = null;      // 고른 장소
   let routeOf = null;       // 경로 카드를 보고 있는 참여자 id (#53)
   let detailOpen = false;   // 세부 경로 표를 펼쳤는지. 다른 사람으로 바꿔도 유지한다
@@ -214,6 +216,14 @@ export async function render(container, params = {}) {
 
   const list = el('div', { className: 'list' });
   function drawPlaces() {
+    if (stationOnly) { // 기타: 장소 목록 없이 안내 한 줄, 확정 버튼은 처음부터 켜진다
+      list.replaceChildren(el('p', { className: 'hint', textContent: t('result.stationOnly') }));
+      foot.replaceChildren(el('button', {
+        type: 'button', className: 'btn', textContent: t('result.confirmStation'),
+        onclick: () => go(renderConfirm, container, { request, selected_result: top, place: null, participants, room_id: params.room_id }),
+      }));
+      return;
+    }
     const purposeLabel = t(`meeting.purpose.${request.purpose}`);
     const rows = places.length
       ? places.map((place) => {
@@ -263,7 +273,7 @@ export async function render(container, params = {}) {
     ...rareServiceNotices([...participants.map((p) => stationsById[p.origin_station_id]), station])
       .map((text) => el('p', { className: 'notice', textContent: text })),
     ...(top.is_estimated ? [el('p', { className: 'hint', textContent: t('result.partialEstimate') })] : []),
-    ...(places.length ? [el('p', { className: 'hint', textContent: t('result.viewHint') })] : []),
+    ...(places.length && !stationOnly ? [el('p', { className: 'hint', textContent: t('result.viewHint') })] : []),
   );
   drawWho();
   drawPlaces();

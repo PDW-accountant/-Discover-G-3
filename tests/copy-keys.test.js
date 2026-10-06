@@ -41,8 +41,7 @@ test('copy.json: 코드가 글자 그대로 부르는 문구 키가 모두 있�
 test('copy.json: 값에 따라 달라지는 문구 키(목적·오류·열차 종류)는 모든 경우가 있다', () => {
   // 어떤 접두어를 코드가 쓰는지 먼저 확인한다(새 접두어가 생기면 아래 목록에 경우를 추가한다)
   const expected = {
-    'meeting.purpose.': ['회식', '회의', '오락'],
-    'meeting.purposeHint.': ['회식', '회의', '오락'],
+    'meeting.purpose.': ['회식', '회의', '오락', '기타'],
     'meeting.error.': ['purpose', 'date', 'past'],
     'route.': ['express', 'local'],
   };

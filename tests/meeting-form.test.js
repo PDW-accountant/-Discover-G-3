@@ -13,11 +13,11 @@ test('FUNC-021: 목적과 도착 일시가 맞으면 MeetingRequest(purpose, arr
   assert.equal(request.arrival_time, new Date(2026, 9, 4, 19, 0).toISOString());
 });
 
-test('FUNC-001: 목적은 회식·회의·오락 세 글자 값만 받는다', () => {
-  for (const purpose of ['회식', '회의', '오락']) {
+test("FUNC-001: 목적은 회식·회의·오락·기타(#88) 네 값만 받는다", () => {
+  for (const purpose of ['회식', '회의', '오락', '기타']) {
     assert.ok(buildMeetingRequest({ ...ok, purpose }, now).request, purpose);
   }
-  for (const purpose of [null, undefined, '', '식사', '회식 / 식사', '스터디']) {
+  for (const purpose of [null, undefined, '', '식사', '회식 / 식사', '스터디', '역만 찾기', 'etc']) {
     assert.deepEqual(buildMeetingRequest({ ...ok, purpose }, now), { error: 'purpose' }, String(purpose));
   }
 });

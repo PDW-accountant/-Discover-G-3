@@ -7,8 +7,8 @@
 // 문구는 lib/data.js의 t()로 읽는다.
 //
 // params 두 가지 (둘 중 하나):
-//   ① 결과 화면(FUNC-009)에서 장소 '선택'을 눌렀을 때
-//      { request: MeetingRequest, selected_result: FairStationResult, place: Place,
+//   ① 결과 화면(FUNC-009)에서 장소 '선택'을 눌렀을 때 (목적이 '기타'면 place: null — 장소 없이 역만 확정, #88)
+//      { request: MeetingRequest, selected_result: FairStationResult, place: Place|null,
 //        participants: Participant[], room_id?: 모임 방 id (각자 입력으로 진행했을 때) }
 //      → 확정 정보를 만들고, 방이 있으면 방에 저장 후 방 링크, 없거나 실패하면 #d= 링크를 붙인다.
 //   ② 이미 만든 확정 정보로 다시 그릴 때 (공유 링크 열기 FUNC-014 등)
@@ -64,7 +64,8 @@ function openRoute(container, params) {
 
 function drawSummary(container, confirmation, { stations, places, roomId, notice = '' }) {
   const stationName = stations.find((s) => s.id === confirmation.s)?.name ?? confirmation.s;
-  const place = places.find((p) => p.place_id === confirmation.pl);
+  const place = confirmation.pl ? places.find((p) => p.place_id === confirmation.pl) : null;
+  // 가게명 줄: 장소 데이터가 있으면 링크, 데이터에 없으면 id, 장소 없이 확정한 약속(기타)이면 줄 자체를 그리지 않는다
   const placeName = place
     ? el('a', { href: linkFor(place, stationName), target: '_blank', rel: 'noopener', textContent: place.name })
     : confirmation.pl;
@@ -83,7 +84,7 @@ function drawSummary(container, confirmation, { stations, places, roomId, notice
       el('div', { className: 'ticket-top' }, [
         el('div', { className: 'eyebrow', textContent: t('confirm.ticket') }),
         el('div', { className: 'st', textContent: t('confirm.station', { name: stationName }) }),
-        el('div', { className: 'pl' }, [placeName]),
+        ...(placeName ? [el('div', { className: 'pl' }, [placeName])] : []),
       ]),
       el('dl', { className: 'ticket-bot' }, [
         el('dt', { textContent: t('confirm.time') }), el('dd', { textContent: formatMeetingTime(confirmation.a) }),
@@ -141,7 +142,7 @@ export async function render(container, params = {}) {
   }
 
   const { request, selected_result: selectedResult, place, participants, room_id: roomId } = params;
-  if (!place) return showMessage(container, t('confirm.noPlace'), 'error');
+  if (!place && request?.purpose !== '기타') return showMessage(container, t('confirm.noPlace'), 'error'); // 기타는 장소 없이 확정(#88)
   const saving = createShell(container);
   saving.screen.replaceChildren(el('p', { className: 'lead', textContent: t('confirm.saving') }));
 
@@ -171,7 +172,7 @@ export async function render(container, params = {}) {
   // 저장하는 동안 [뒤로]로 돌아갔으면(#44) 이전 화면을 덮어 그리지 않는다. 확정은 내 약속 목록에서 다시 열 수 있다
   if (!saving.screen.isConnected) return confirmation;
   drawSummary(container, confirmation, {
-    stations, places: [place, ...places], roomId: confirmation.share_url.includes('?room=') ? roomId : undefined, notice,
+    stations, places: [place, ...places].filter(Boolean), roomId: confirmation.share_url.includes('?room=') ? roomId : undefined, notice,
   });
   return confirmation;
 }
