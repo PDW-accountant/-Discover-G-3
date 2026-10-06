@@ -1,5 +1,7 @@
 // ① 모임 조건 입력 + 첫 화면 (개발 A) — FUNC-001, FUNC-004(예시로 해보기 버튼), FUNC-020(내 약속 확인하기 버튼)
-// 모임 목적 버튼 3개(회식/회의/오락, 하나만 선택), 도착 희망 일시(현재 이후만). 둘 다 있으면 다음 단계.
+// 모임 목적 드롭다운(회식/회의/오락/기타, 하나만 선택), 도착 희망 일시(현재 이후만). 둘 다 있으면 다음 단계.
+// 10/6 크로스피드백(B-2조): 목적 항목의 예시 글자(고깃집 등)는 빼고 목적만 가운데(#87) · '기타'는 장소 추천 없이 역만 찾기(#88)
+//   · 예시로 해보기는 1·2번 입력 카드와 다른 모양(구분선 + 가로 칩, #89).
 // 문구는 lib/data.js의 t()로 읽는다.
 // 이번 구현(#19): 목적·도착 일시 입력. '링크로 입력받기'(방 만들기·링크 복사, FUNC-021)는 출발지 입력 화면(participants.js)에 있다.
 // 임시저장(FUNC-019, #17): 목적·날짜·시각이 바뀌면 0.5초 뒤 저장, [임시저장]은 바로 저장. 앱을 처음 열 때 저장된 내용이 있으면
@@ -181,10 +183,7 @@ export async function render(container, params = {}) {
     const list = el('div', { className: 'dd-list', hidden: !state.dropdownOpen }, PURPOSES.map((purpose) => el('button', {
       type: 'button', className: 'dd-opt',
       onclick: () => { state.purpose = purpose; state.dropdownOpen = false; changed(); draw(); },
-    }, [
-      el('span', { textContent: t(`meeting.purpose.${purpose}`) }),
-      el('span', { className: 'em', textContent: t(`meeting.purposeHint.${purpose}`) }),
-    ])));
+    }, [el('span', { textContent: t(`meeting.purpose.${purpose}`) })])));
     return el('div', { className: 'block' }, [
       el('h2', { className: 'q' }, [el('span', { className: 'n', textContent: '1' }), t('meeting.purposeQuestion')]),
       el('div', { className: state.dropdownOpen ? 'dd open' : 'dd' }, [
