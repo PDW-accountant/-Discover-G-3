@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { loadScenario } from '../src/js/lib/demo.js';
 import { computeResult } from '../src/js/screens/result.js';
+import { CHARACTER_NAMES, characterSvg } from '../src/js/lib/characters.js';
+import { MAX_PARTICIPANTS, NICKNAME_MAX_LENGTH } from '../src/js/config.js';
 
 // 실행: npm test   (FUNC-004 #5 예시로 해보기)
 
@@ -37,5 +39,35 @@ test('FUNC-004: 시연 시나리오 3개를 불러와 추천 결과를 계산하
     const { top } = computeResult(data, request, participants);
     assert.equal(top.station.id, s.expected.station_id, s.name);
     assert.equal(top.is_estimated, false, s.name);
+  }
+});
+
+// ---------- #73: 예시 닉네임 1~3번 = 캐릭터 이름(감이·택이·딜이), 9명까지 캐릭터 그림 구분 ----------
+
+test('#73: 예시 시나리오의 1~3번 참여자 이름은 캐릭터 이름(감이·택이·딜이)이라 옆 그림과 짝이 맞는다', () => {
+  for (const s of demo.scenarios) {
+    assert.deepEqual(s.participants.slice(0, 3).map((p) => p.nickname), CHARACTER_NAMES, s.name);
+  }
+});
+
+test('#73: 캐릭터 이름은 감이·택이·딜이 3개 (4~9번 그림은 이름 없음)', () => {
+  assert.deepEqual(CHARACTER_NAMES, ['감이', '택이', '딜이']);
+  for (const name of CHARACTER_NAMES) assert.ok(Array.from(name).length <= NICKNAME_MAX_LENGTH, name);
+});
+
+test('#73: 참여자 9명까지 모두 다른 캐릭터 그림, 10번째부터는 기본 친구', () => {
+  for (const mood of ['basic', 'happy']) {
+    const svgs = Array.from({ length: MAX_PARTICIPANTS }, (_, i) => characterSvg(i, mood));
+    assert.equal(new Set(svgs).size, MAX_PARTICIPANTS, mood);
+    assert.equal(characterSvg(MAX_PARTICIPANTS, mood), characterSvg(MAX_PARTICIPANTS + 3, mood));
+    assert.ok(!svgs.includes(characterSvg(MAX_PARTICIPANTS, mood)), mood);
+  }
+});
+
+test('#73: 캐릭터 그림은 같은 틀(viewBox 200×215, 크기 비율)을 쓴다', () => {
+  for (let i = 0; i <= MAX_PARTICIPANTS; i += 1) {
+    const svg = characterSvg(i, 'basic', 40);
+    assert.match(svg, /^<svg class="ch" viewBox="0 0 200 215" width="40" height="43" aria-hidden="true">/);
+    assert.match(svg, /<\/svg>$/);
   }
 });
