@@ -1,7 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { LINE_BADGES, initialOf, lineBadge, normalizeKeyword, rareServiceNotices, searchStations } from '../src/js/lib/stations.js';
+import {
+  LINE_BADGES, MIDDLE_MATCH_MIN_LENGTH, includesKeyword, initialOf, lineBadge, matchesAt, normalizeKeyword, rareServiceNotices,
+  searchStations, startsWithKeyword,
+} from '../src/js/lib/stations.js';
 
 // 실행: npm test
 
@@ -22,10 +25,46 @@ test('FUNC-002: 검색어가 없으면 가나다 순 전체 목록', () => {
   assert.deepEqual(names(searchStations(stations, '   ')), names(searchStations(stations)));
 });
 
-test("FUNC-002: '강남' 검색 시 이름이 '강남'으로 시작하는 역만 나온다 (가운데·끝 글자는 맞추지 않음, 10/4)", () => {
-  assert.deepEqual(names(searchStations(stations, '강남')), ['강남', '강남구청']);
-  assert.deepEqual(names(searchStations(stations, '입구')), []); // 을지로입구·홍대입구는 '입구'로 시작하지 않는다
-  assert.deepEqual(names(searchStations(stations, '구청')), []);
+test("#72: '강남' → 강남·강남구청(첫 글자 일치)이 위에, 이름 중간에 '강남'이 든 역이 아래에", () => {
+  const more = [...stations, station('S9', '신강남', ['9']), station('S10', '가강남시장', ['1'])];
+  assert.deepEqual(names(searchStations(more, '강남')), ['강남', '강남구청', '가강남시장', '신강남']);
+  assert.deepEqual(names(searchStations(stations, '입구')), ['을지로입구', '홍대입구']); // 중간·끝 글자로도 찾는다
+  assert.deepEqual(names(searchStations(stations, '구청')), ['강남구청']);
+});
+
+test("#72: '벤처'·자음 'ㅂㅊ' → 서울대벤처타운 (예전에는 '서울대'부터 쳐야 나왔다)", () => {
+  const more = [...stations, station('S11', '서울대벤처타운', ['신림']), station('S12', '봉천', ['2'])];
+  assert.deepEqual(names(searchStations(more, '벤처')), ['서울대벤처타운']);
+  assert.deepEqual(names(searchStations(more, 'ㅂㅊ')), ['봉천', '서울대벤처타운']); // 첫 글자 일치(봉천) 다음에 중간 일치
+  assert.deepEqual(names(searchStations(more, '벤처역')), ['서울대벤처타운']);   // 끝의 '역'은 그대로 무시
+});
+
+test(`#72: 한 글자(${MIDDLE_MATCH_MIN_LENGTH}글자 미만) 검색은 지금처럼 첫 글자 일치만`, () => {
+  const more = [...stations, station('S9', '신강남', ['9'])];
+  assert.equal(MIDDLE_MATCH_MIN_LENGTH, 2);
+  assert.deepEqual(names(searchStations(more, '강')), ['강남', '강남구청']); // '신강남'은 나오지 않는다
+  assert.deepEqual(names(searchStations(more, 'ㄴ')), []);                   // 중간에 ㄴ이 있는 역도 나오지 않는다
+  assert.deepEqual(names(searchStations(more, '구')), []);
+});
+
+test('#72: 첫 글자 일치에 든 역은 중간 일치에 다시 넣지 않는다 (중복 없음)', () => {
+  const more = [...stations, station('S13', '강남강남', ['2'])]; // 처음과 중간에 모두 맞는 이름
+  const found = searchStations(more, '강남');
+  assert.equal(new Set(found).size, found.length);
+  assert.deepEqual(names(found), ['강남', '강남강남', '강남구청']);
+});
+
+test('#72: matchesAt·includesKeyword — 어느 자리에서든, 자음은 초성으로, 공백은 무시', () => {
+  assert.equal(matchesAt('서울대벤처타운', '벤처', 3), true);
+  assert.equal(matchesAt('서울대벤처타운', '벤처', 2), false);
+  assert.equal(matchesAt('강남', '강남구', 0), false); // 이름보다 긴 검색어
+  assert.equal(includesKeyword('서울대벤처타운', '벤처'), true);
+  assert.equal(includesKeyword('서울대벤처타운', 'ㅂㅊ'), true);
+  assert.equal(includesKeyword('서울대벤처타운', '타운'), true);  // 끝 글자
+  assert.equal(includesKeyword('서울대벤처타운', '처벤'), false);
+  assert.equal(includesKeyword('종로 3가', '로3'), true);        // 이름 안 공백 무시
+  assert.equal(includesKeyword('강남', '강남구청'), false);
+  assert.equal(startsWithKeyword('서울대벤처타운', '벤처'), false); // 기존 첫 글자 비교는 그대로
 });
 
 test("FUNC-002: 자음만 치면 그 자음으로 시작하는 역, 완성 글자를 치면 그 글자로 시작하는 역만 (10/4)", () => {
@@ -84,4 +123,23 @@ test('FUNC-002: data/stations.json의 모든 호선에 동그라미 표시값이
   const all = JSON.parse(readFileSync(new URL('../data/stations.json', import.meta.url), 'utf8'));
   const missing = [...new Set(all.flatMap((s) => s.lines))].filter((line) => !(line in LINE_BADGES) || LINE_BADGES[line][0].length > 3);
   assert.deepEqual(missing, []);
+});
+
+test('#72 완료 조건: 실제 역 데이터(data/stations.json)', () => {
+  const all = JSON.parse(readFileSync(new URL('../data/stations.json', import.meta.url), 'utf8'));
+  assert.ok(names(searchStations(all, '벤처')).includes('서울대벤처타운'));
+  const gangnam = names(searchStations(all, '강남'));
+  assert.deepEqual(gangnam.slice(0, 2), ['강남', '강남구청']); // 첫 글자 일치가 맨 위
+  const middleStart = gangnam.findIndex((n) => !n.startsWith('강남'));
+  if (middleStart >= 0) assert.ok(gangnam.slice(middleStart).every((n) => !n.startsWith('강남')), '중간 일치는 첫 글자 일치 아래에만');
+  assert.ok(searchStations(all, 'ㄱ').every((s) => initialOf(s.name[0]) === 'ㄱ' || s.name[0] === 'ㄱ'), "'ㄱ'은 첫 글자가 ㄱ인 역만");
+  const ipgu = names(searchStations(all, '입구'));
+  assert.ok(ipgu.includes('홍대입구') && ipgu.includes('을지로입구'));
+});
+
+test('#72: 역 655개에서 검색이 디바운스 없이도 충분히 빠르다', () => {
+  const all = JSON.parse(readFileSync(new URL('../data/stations.json', import.meta.url), 'utf8'));
+  const started = performance.now();
+  for (const word of ['ㄱ', '강', '강남', '입구', 'ㅂㅊ', '서울대벤처타운', '없는역이름']) searchStations(all, word);
+  assert.ok(performance.now() - started < 200, '7번 검색이 0.2초 안');
 });

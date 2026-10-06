@@ -46,6 +46,10 @@ export function normalizeKeyword(keyword) {
 
 const byName = (a, b) => a.name.localeCompare(b.name, 'ko') || String(a.id).localeCompare(String(b.id));
 
+// 이름 중간 글자로도 찾는(②) 최소 검색어 길이 (#72). 한 글자('강', 'ㄱ')는 중간 일치가 너무 많아 첫 글자 일치만 쓴다.
+// 기획팀이 보고 조정한다.
+export const MIDDLE_MATCH_MIN_LENGTH = 2;
+
 // 한글 초성(자음) 19개 — 완성 글자 코드에서 초성 번호로 찾는다
 const CHOSEONG = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
 const SYLLABLE_FIRST = 0xac00;
@@ -71,9 +75,29 @@ export function startsWithKeyword(name, word) {
   return [...word].every((typed, i) => charMatches(typed, actual[i]));
 }
 
+/** 역 이름(공백 제외)의 offset번째 글자부터 검색어가 맞는지. 글자마다 charMatches(자음은 초성 비교). */
+export function matchesAt(name, word, offset) {
+  const actual = [...String(name ?? '').replace(/\s+/g, '')];
+  return [...word].every((typed, i) => charMatches(typed, actual[offset + i]));
+}
+
+/** 역 이름(공백 제외) 어느 자리에서든 검색어가 맞는지 (#72). '벤처'·'ㅂㅊ' → 서울대벤처타운. */
+export function includesKeyword(name, word) {
+  const nameLength = [...String(name ?? '').replace(/\s+/g, '')].length;
+  const wordLength = [...word].length;
+  for (let offset = 0; offset + wordLength <= nameLength; offset += 1) {
+    if (matchesAt(name, word, offset)) return true;
+  }
+  return false;
+}
+
 /**
- * 가나다 순으로 정렬하고, 역 이름이 검색어로 **시작하는** 역만 남긴다(10/4 대원 요청). 검색어가 비면 전체.
- * 'ㄱ' → 첫 글자가 ㄱ으로 시작하는 역(강남·광화문…), '가' → 첫 글자가 '가'인 역(가산디지털단지·가양…), 'ㄱㄴ'·'강ㄴ' → 강남.
+ * 출발역 검색. 검색어가 비면 가나다 순 전체.
+ * 결과 = ① 이름이 검색어로 **시작하는** 역(가나다 순, 10/4) + ② 그 밖에 이름 **중간**에 검색어가 든 역(가나다 순, #72).
+ * ②는 검색어가 MIDDLE_MATCH_MIN_LENGTH(2)글자 이상일 때만 붙이고, ①에 든 역은 ②에서 뺀다.
+ * 'ㄱ' → 첫 글자가 ㄱ인 역만(강남·광화문…), '강남' → 강남·강남구청 다음에 이름 중간에 '강남'이 든 역,
+ * '벤처'·'ㅂㅊ' → 서울대벤처타운, 'ㄱㄴ'·'강ㄴ' → 강남(첫 글자 일치).
+ * 화면(join.js, participants.js)은 이 배열 하나를 그대로 그린다.
  * @param {Array} stations data/stations.json
  * @param {string} keyword
  * @returns {Array} 정렬·필터된 역 목록 (없으면 빈 배열 → 화면에서 '검색 결과가 없어요')
@@ -81,6 +105,10 @@ export function startsWithKeyword(name, word) {
 export function searchStations(stations, keyword = '') {
   const word = normalizeKeyword(keyword);
   const list = Array.isArray(stations) ? stations : [];
-  const found = word ? list.filter((s) => startsWithKeyword(s.name, word)) : [...list];
-  return found.sort(byName);
+  if (!word) return [...list].sort(byName);
+  const first = list.filter((s) => startsWithKeyword(s.name, word)).sort(byName);
+  if ([...word].length < MIDDLE_MATCH_MIN_LENGTH) return first;
+  const inFirst = new Set(first);
+  const middle = list.filter((s) => !inFirst.has(s) && includesKeyword(s.name, word)).sort(byName);
+  return [...first, ...middle];
 }
