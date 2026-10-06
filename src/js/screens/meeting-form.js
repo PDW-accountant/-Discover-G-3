@@ -14,7 +14,7 @@ import { loadScenario } from '../lib/demo.js';
 import { createShell, el, go } from '../lib/shell.js';
 import { clearDraft, hasDraftContent, loadDraft, saveDraft, saveDraftSoon } from '../lib/storage.js';
 import { characterNode } from '../lib/characters.js';
-import { PURPOSES } from '../config.js';
+import { PURPOSES, DEMO_SCENARIO_COUNT } from '../config.js';
 import { render as renderParticipants } from './participants.js';
 import { render as renderResult } from './result.js';
 import { render as renderMyMeetings } from './my-meetings.js';
@@ -164,17 +164,18 @@ export async function render(container, params = {}) {
     go(renderResult, container, scenario, { back: { ...params, form } });
   }
 
+  /** 예시로 해보기 영역(#89): 1·2번 입력 카드와 구분되게 카드 없이 구분선 + 작은 제목 + 가로로 넘기는 칩. 동작(tryDemo)은 그대로 */
   function demoBlock() {
-    const scenarios = demo?.scenarios ?? [];
+    const scenarios = (demo?.scenarios ?? []).slice(0, DEMO_SCENARIO_COUNT); // 가로로 넘기지 않게 앞 2개만 (#89)
     if (!scenarios.length) return null;
-    return el('div', { className: 'block demo' }, [
-      el('p', { className: 'opt-label', textContent: t('meeting.demoTitle') }),
-      el('div', { className: 'demo-list' }, scenarios.map((s) => el('button', {
-        type: 'button', className: 'btn ghost sm',
+    return el('section', { className: 'demo', ariaLabel: t('meeting.demoTitle') }, [
+      el('div', { className: 'eyebrow', textContent: t('meeting.demoTitle') }),
+      el('div', { className: 'demo-chips' }, scenarios.map((s) => el('button', {
+        type: 'button', className: 'demo-chip',
         textContent: t('meeting.demoOption', { name: s.name, count: s.participants.length }),
         onclick: () => tryDemo(s.id),
       }))),
-      el('p', { className: 'hint', textContent: t('meeting.demoHint') }),
+      el('p', { className: 'demo-hint', textContent: t('meeting.demoHint') }),
     ]);
   }
 
