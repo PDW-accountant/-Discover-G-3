@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { LABEL_GAP_PX, drawRoute, lineColor, loadMapSdk, routePoints, routeSegments, routeStops, visibleLabels } from '../src/js/lib/map.js';
+import { LABEL_GAP_PX, drawRoute, labelSide, lineColor, loadMapSdk, routePoints, routeSegments, routeStops, visibleLabels } from '../src/js/lib/map.js';
 import { lineBadge } from '../src/js/lib/stations.js';
 
 // 실행: npm test
@@ -91,6 +91,15 @@ test('#74: 구간마다 { line, color, points } — 환승역에서 앞 구간 �
   assert.deepEqual(routeStops(segs).map((s) => [s.kind, s.station.id, s.color]), [
     ['from', '사당', lineBadge('4').background], ['transfer', '충무로', lineBadge('3').background], ['to', '을지로3가', lineBadge('3').background],
   ]);
+  assert.deepEqual(routeStops(segs).map((s) => s.neighbors.map((n) => n.id)), [['총신대입구'], ['총신대입구', '을지로3가'], ['충무로']]); // 이름표를 선 반대쪽에 두려고
+});
+
+test('#74: 이름표는 선 반대쪽 — 선이 점에서 위로 뻗으면 아래, 아래로 뻗으면 위, 이웃이 없으면 위', () => {
+  assert.equal(labelSide({ x: 0, y: 100 }, [{ x: 0, y: 20 }]), 'below');            // 선이 위로
+  assert.equal(labelSide({ x: 0, y: 100 }, [{ x: 0, y: 180 }]), 'above');           // 선이 아래로
+  assert.equal(labelSide({ x: 0, y: 100 }, [{ x: -50, y: 20 }, { x: 50, y: 60 }]), 'below'); // 환승: 양쪽 다 위
+  assert.equal(labelSide({ x: 0, y: 100 }, [{ x: -50, y: 20 }, { x: 50, y: 200 }]), 'above'); // 평균이 아래
+  assert.equal(labelSide({ x: 0, y: 100 }, [undefined]), 'above');
 });
 
 test('#74: 구간이 없으면(직선거리 대체) 출발 → 도착 한 구간, 좌표 없는 역은 빼고, 마지막 구간은 만남 역에서 끝난다', () => {
