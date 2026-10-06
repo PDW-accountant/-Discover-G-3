@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  BEFORE_MINUTES, EVENT_HOURS, beforeTrigger, buildIcs, downloadIcs, escapeText, externalBrowserUrl, foldLine, googleCalendarUrl, icsDate, meetingEvent, midnightTrigger,
+  BEFORE_MINUTES, EVENT_HOURS, beforeTrigger, buildIcs, calendarFlagOf, downloadIcs, escapeText, externalBrowserUrl, foldLine, googleCalendarUrl, icsDate, meetingEvent, midnightTrigger, withCalendarFlag,
 } from '../src/js/lib/calendar.js';
 import { isKakaoTalk } from '../src/js/lib/shell.js';
 
@@ -92,6 +92,15 @@ test('#75: 약속 일정 — 참여자용은 출발역·출발 시각, 총무용
 
 test('#75: 카카오톡 안 브라우저는 .ics를 못 열어 약속 링크를 기기 기본 브라우저로 여는 카카오톡 주소를 쓴다', () => {
   assert.equal(externalBrowserUrl('https://eodiga3.vercel.app/?room=abc'), 'kakaotalk://web/openExternal?url=https%3A%2F%2Feodiga3.vercel.app%2F%3Froom%3Dabc');
+  // 크롬에서 열린 경로 화면이 그 사람 칸을 펼치도록 ?cal=닉네임 을 붙인다. #d= 링크는 # 앞에 붙어 확정 정보가 그대로다
+  assert.equal(withCalendarFlag('https://x.test/?room=abc', '감이'), 'https://x.test/?room=abc&cal=%EA%B0%90%EC%9D%B4');
+  assert.equal(withCalendarFlag('https://x.test/#d=eyJ2IjoxfQ', '감이'), 'https://x.test/?cal=%EA%B0%90%EC%9D%B4#d=eyJ2IjoxfQ');
+  assert.equal(withCalendarFlag('https://x.test/#d=eyJ2IjoxfQ'), 'https://x.test/?cal=#d=eyJ2IjoxfQ'); // 총무: 사람 없음 → 첫 사람
+  assert.equal(withCalendarFlag('이상한 주소', '감이'), '이상한 주소');
+  assert.equal(calendarFlagOf('https://x.test/?cal=%EA%B0%90%EC%9D%B4#d=eyJ2IjoxfQ'), '감이');
+  assert.equal(calendarFlagOf('https://x.test/?room=abc&cal='), '');
+  assert.equal(calendarFlagOf('https://x.test/?room=abc'), null);
+  assert.equal(calendarFlagOf('이상한 주소'), null);
   assert.equal(isKakaoTalk({ navigator: { userAgent: 'Mozilla/5.0 (Linux; Android 14) KAKAOTALK/10.0' } }), true);
   assert.equal(isKakaoTalk({ navigator: { userAgent: 'Mozilla/5.0 (Linux; Android 14) Chrome/129' } }), false);
   assert.equal(isKakaoTalk(undefined), false);

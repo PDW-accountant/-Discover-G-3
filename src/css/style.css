@@ -312,6 +312,8 @@ input.p-name.invalid{border-color:#cf222e;}
 .cal-row .btn.sm{width:100%;}
 .cal-google{font-size:12px;font-weight:700;color:var(--accent-ink);text-decoration:underline;}
 .cal-hint{font-size:12px;color:var(--muted);text-align:center;margin:0;}
+.cal-row.flash .btn{animation:cal-flash 1s ease-in-out 3;}
+@keyframes cal-flash{0%,100%{background:var(--card);}50%{background:var(--accent-mist);border-color:var(--accent);}}
 .done-wrap .cal-row{border-top:0;padding:4px 0 0;}
 .depart.now{background:var(--accent-mist);}
 .route-place{padding:10px 14px;border-top:1px solid var(--hair);display:flex;align-items:center;gap:8px;font-size:14px;}

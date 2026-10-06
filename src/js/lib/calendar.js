@@ -4,7 +4,8 @@
 // 파일 형식은 RFC 5545: 줄 끝은 CRLF, 75바이트를 넘는 줄은 다음 줄 앞에 공백 하나를 두고 이어 쓴다(folding),
 // 글자 값의 , ; \ 줄바꿈은 \ 로 피한다. 구글 캘린더 웹 링크는 보조(알림은 구글 기본 설정을 따른다).
 // 카카오톡 안 브라우저는 .ics 파일을 열지 못해('지원하지 않는 파일 형식', 10/6 대원 확인) 버튼이 약속 링크를
-// 기기의 기본 브라우저(크롬·사파리)로 여는 카카오톡 주소(kakaotalk://web/openExternal)로 바뀐다. 거기서 다시 누르면 된다.
+// 기기의 기본 브라우저(크롬·사파리)로 여는 카카오톡 주소(kakaotalk://web/openExternal)로 바뀐다.
+// 그때 주소에 ?cal=닉네임 을 붙여, 크롬에서 열린 경로 화면이 그 사람 칸을 펼치고 [내 캘린더에 추가]를 바로 보여준다(route.js).
 
 import { t } from './data.js';
 import { el, isKakaoTalk } from './shell.js';
@@ -116,6 +117,28 @@ export function downloadIcs(text, filename = ICS_FILENAME, { doc = globalThis.do
   }
 }
 
+export const CAL_PARAM = 'cal'; // 경로 화면이 열리자마자 캘린더 버튼을 보여줄 사람(닉네임). 값이 비면 첫 사람
+
+/** 약속 링크에 ?cal=닉네임 을 붙인다(#d= 링크는 # 앞의 주소에 붙으므로 확정 정보가 깨지지 않는다). */
+export function withCalendarFlag(url, nickname = '') {
+  try {
+    const u = new URL(url);
+    u.searchParams.set(CAL_PARAM, nickname);
+    return u.href;
+  } catch {
+    return url;
+  }
+}
+
+/** 지금 주소의 ?cal= 값. 없으면 null */
+export function calendarFlagOf(href) {
+  try {
+    return new URL(href).searchParams.get(CAL_PARAM);
+  } catch {
+    return null;
+  }
+}
+
 /** 카카오톡 안 브라우저에서 주소를 기기의 기본 브라우저로 여는 카카오톡 주소 */
 export function externalBrowserUrl(url) {
   return `kakaotalk://web/openExternal?url=${encodeURIComponent(url)}`;
@@ -159,7 +182,9 @@ export function calendarControls(meeting, { win = globalThis.window, kakaoTalk =
   const button = kakaoTalk
     ? el('button', {
       type: 'button', className: 'btn ghost sm', textContent: t('calendar.openExternal'),
-      onclick: () => { try { win.location.href = externalBrowserUrl(meeting.url); } catch { hint.textContent = t('calendar.failed'); } },
+      onclick: () => {
+        try { win.location.href = externalBrowserUrl(withCalendarFlag(meeting.url, meeting.nickname ?? '')); } catch { hint.textContent = t('calendar.failed'); }
+      },
     })
     : el('button', {
       type: 'button', className: 'btn ghost sm', textContent: t('calendar.add'),

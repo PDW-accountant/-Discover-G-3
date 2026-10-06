@@ -14,7 +14,7 @@
 import { loadData, t } from '../lib/data.js';
 import { travelTime } from '../lib/transit.js';
 import { BUFFER_MINUTES, departureAdvice } from '../lib/departure.js';
-import { calendarControls } from '../lib/calendar.js';
+import { calendarControls, calendarFlagOf } from '../lib/calendar.js';
 import { placeLink } from '../lib/places.js';
 import { drawRoute } from '../lib/map.js';
 import { rareServiceNotices } from '../lib/stations.js';
@@ -149,7 +149,7 @@ function placeNode(place, className = 'route-place top') {
 function calendarRow(info, meeting) {
   const arrival = new Date(meeting.arrival);
   const departAt = info.departure?.depart_at ?? new Date(arrival.getTime() - (info.minutes + BUFFER_MINUTES) * 60000);
-  return calendarControls({ ...meeting, from: info.from.name, departAt, minutes: info.minutes });
+  return calendarControls({ ...meeting, from: info.from.name, nickname: info.nickname, departAt, minutes: info.minutes });
 }
 
 /** 펼친 칸의 내용: 지도 → 요약 → 구간 → 권장 출발 시각 → 캘린더 등록 (만남 장소는 화면 위쪽에만) */
@@ -212,8 +212,12 @@ export async function render(container, params = {}) {
   const mine = myNickname(params.room, deviceId);
   let openName = confirmation.people.some((p) => p.n === mine) ? mine : null;
   const notice = mine && !openName ? t('route.notInList') : '';
+  // 카카오톡에서 '브라우저에서 열어 캘린더에 추가'로 넘어왔으면(?cal=닉네임, #75) 그 사람 칸을 펼치고 캘린더 버튼을 바로 보여준다
+  const wanted = calendarFlagOf(pageUrl);
+  const showCalendar = wanted !== null;
+  if (showCalendar) openName = confirmation.people.find((p) => p.n === wanted)?.n ?? openName ?? confirmation.people[0].n;
 
-  const { screen, foot } = createShell(container);
+  const { screen, foot, toast } = createShell(container);
   const list = el('div', { className: 'routes' });
   screen.replaceChildren(
     el('div', { className: 'eyebrow', textContent: t('route.eyebrow') }),
@@ -251,4 +255,12 @@ export async function render(container, params = {}) {
   }
 
   draw();
+  if (showCalendar) {
+    const row = list.querySelector('.acc.open .cal-row');
+    if (row) {
+      row.classList.add('flash');
+      row.scrollIntoView?.({ block: 'center' });
+      toast(t('calendar.openedHint'));
+    }
+  }
 }
