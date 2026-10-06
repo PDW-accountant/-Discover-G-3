@@ -14,10 +14,11 @@ import { lineBadge } from './stations.js';
 
 const W = 320;
 const H = 176;
-const PAD = { top: 40, right: 34, bottom: 44, left: 34 }; // 위: 도착 이름표, 아래: 출발 이름표 자리
+const PAD = { top: 44, right: 36, bottom: 44, left: 36 }; // 위·아래: 이름표 자리(선 반대쪽에 붙으므로 양쪽 다)
 const INK = '#2B2A28';
 const ACCENT = '#D9512C'; // 노선을 모를 때(직선거리 대체 등) 선 색
 export const LABEL_GAP_PX = 40; // 이름표 사이가 이만큼 안 떨어지면 환승 글씨를 숨긴다
+export const LABEL_SIDE_RADIUS_PX = 60; // 이름표를 위/아래 어느 쪽에 둘지 볼 때 세는 경로 점의 거리
 
 const hasCoords = (s) => Number.isFinite(s?.lat) && Number.isFinite(s?.lng);
 const samePlace = (a, b) => a.lat === b.lat && a.lng === b.lng;
@@ -90,31 +91,34 @@ export function routeSegments({ from, to, steps = [] }) {
 
 /**
  * 출발·환승·도착 역 목록 (#74). 환승역 = 두 번째 구간부터의 첫 점. color는 그 역에서 타는 노선 색(도착은 내린 노선 색).
- * neighbors는 선이 그 점에서 이어지는 이웃 역(앞·뒤) — 이름표를 선 반대쪽에 두는 데 쓴다.
- * @returns {Array<{kind: 'from'|'transfer'|'to', station: Station, color: string, neighbors: Station[]}>}
+ * @returns {Array<{kind: 'from'|'transfer'|'to', station: Station, color: string}>}
  */
 export function routeStops(segments) {
   if (!segments?.length) return [];
   const first = segments[0], last = segments[segments.length - 1];
-  const beforeEnd = (seg) => seg.points[seg.points.length - 2];
   return [
-    { kind: 'from', station: first.points[0], color: first.color, neighbors: [first.points[1]] },
-    ...segments.slice(1).map((seg, i) => ({ kind: 'transfer', station: seg.points[0], color: seg.color, neighbors: [beforeEnd(segments[i]), seg.points[1]] })),
-    { kind: 'to', station: last.points[last.points.length - 1], color: last.color, neighbors: [beforeEnd(last)] },
+    { kind: 'from', station: first.points[0], color: first.color },
+    ...segments.slice(1).map((seg) => ({ kind: 'transfer', station: seg.points[0], color: seg.color })),
+    { kind: 'to', station: last.points[last.points.length - 1], color: last.color },
   ];
 }
 
 /**
- * 이름표를 점 위에 둘지 아래에 둘지 (#74). 선이 점에서 위쪽으로 뻗으면 아래에, 아니면 위에 둬 선과 겹치지 않게 한다.
+ * 이름표를 점 위에 둘지 아래에 둘지 (#74). 점에서 radius(px) 안에 있는 경로 점을 세어 선이 적은 쪽에 둔다(같으면 위).
+ * 바로 옆 역만 보면 선이 꺾여 돌아오는 경우(수인분당 서현 → 정자 → 신분당 북쪽)에 이름표가 선 위에 놓여서, 주변 점을 모두 센다.
  * @param {{x: number, y: number}} stop 점의 화면 좌표(아래로 갈수록 y가 큼)
- * @param {Array<{x: number, y: number}|undefined>} neighbors 이웃 역의 화면 좌표
+ * @param {Array<{x: number, y: number}|undefined>} points 경로의 모든 점(화면 좌표)
  * @returns {'above'|'below'}
  */
-export function labelSide(stop, neighbors = []) {
-  const near = neighbors.filter(Boolean);
-  if (!near.length) return 'above';
-  const meanY = near.reduce((sum, n) => sum + n.y, 0) / near.length;
-  return meanY < stop.y ? 'below' : 'above';
+export function labelSide(stop, points = [], radius = LABEL_SIDE_RADIUS_PX) {
+  let above = 0, below = 0;
+  for (const p of points) {
+    if (!p) continue;
+    const d = Math.hypot(p.x - stop.x, p.y - stop.y);
+    if (d === 0 || d > radius) continue;
+    if (p.y < stop.y) above += 1; else below += 1;
+  }
+  return above > below ? 'below' : 'above';
 }
 
 /**
@@ -171,9 +175,10 @@ export function drawRoute(container, { from, to, steps }) {
   const via = all.filter((p, i) => i === 0 || !samePlace(p, all[i - 1]))
     .filter((p) => !stopKeys.has(`${p.lat},${p.lng}`))
     .map((p) => { const [x, y] = project(p); return `<circle cx="${x}" cy="${y}" r="3" fill="#fff" stroke="${INK}" stroke-width="1.5"/>`; }).join('');
+  const allPx = all.map((p) => { const [x, y] = project(p); return { x, y }; });
   const marks = stops.map((s, i) => {
     const [x, y] = project(s.station);
-    const side = labelSide({ x, y }, s.neighbors.map((n) => { const [nx, ny] = project(n); return { x: nx, y: ny }; }));
+    const side = labelSide({ x, y }, allPx);
     const textY = (up, down) => (side === 'below' ? Math.min(y + down, H - 4) : Math.max(y - up, 14));
     if (s.kind === 'from') {
       return `<circle cx="${x}" cy="${y}" r="7" fill="${s.color}" stroke="#fff" stroke-width="3"/>` + svgText(x, textY(14, 24), t('route.mapFrom'));
@@ -234,9 +239,10 @@ function drawKakaoRoute(container, { segments, from, to }) {
       overlay(maps, s.station, `<div class="kmap-dot ${s.kind}" style="border-color:${s.kind === 'transfer' ? s.color : '#fff'};background:${fill}"></div>`, { zIndex: 3 }).setMap(map);
     }
     map.relayout(); // 자리가 막 생겼을 수 있어 크기를 다시 재게 한다
-    map.setBounds(bounds, 48, 28, 28, 28); // 위 여백은 도착 이름표, 아래는 출발 이름표 자리
+    map.setBounds(bounds, 48, 32, 48, 32); // 위·아래 여백은 이름표 자리(선 반대쪽에 붙으므로 양쪽 다)
     const proj = map.getProjection();
     const toPx = (st) => { const p = proj.containerPointFromCoords(new maps.LatLng(st.lat, st.lng)); return { x: p.x, y: p.y }; };
+    const allPx = segments.flatMap((seg) => seg.points).map(toPx);
     const px = stops.map((s) => ({ kind: s.kind, ...toPx(s.station) }));
     const shown = visibleLabels(px);
     stops.forEach((s, i) => {
@@ -244,7 +250,7 @@ function drawKakaoRoute(container, { segments, from, to }) {
       const text = s.kind === 'transfer' ? t('route.mapTransfer', { name: s.station.name }) : texts[s.kind];
       const content = `<div class="kmap-label ${s.kind}" style="border-color:${s.color}">${escapeXml(text)}</div>`;
       // 선이 점에서 위로 뻗으면 이름표를 아래에, 아니면 위에 (선과 겹치지 않게)
-      const side = labelSide(px[i], s.neighbors.map(toPx));
+      const side = labelSide(px[i], allPx);
       overlay(maps, s.station, content, { yAnchor: side === 'below' ? -0.5 : 1.5, zIndex: s.kind === 'transfer' ? 4 : 5 }).setMap(map);
     });
   } catch (e) {
