@@ -1,9 +1,18 @@
-import { test } from 'node:test';
+import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { buildRouteInfo, kakaoMapLink, meetingPlace, myNickname } from '../src/js/screens/route.js';
+import { readFile } from 'node:fs/promises';
+import { loadData } from '../src/js/lib/data.js';
+import { buildRouteInfo, departText, kakaoMapLink, meetingPlace, myNickname, walkText } from '../src/js/screens/route.js';
 
 // 실행: npm test
+
+// 문구(data/copy.json)를 화면처럼 loadData()로 불러 둔다
+before(async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = async (url) => ({ json: async () => JSON.parse(await readFile(new URL(`../${url}`, import.meta.url), 'utf8')) });
+  try { await loadData(); } finally { globalThis.fetch = original; }
+});
 
 const st = (id, name, lat, lng) => ({ id, name, lines: ['2'], lat, lng });
 const stationsById = {
@@ -118,6 +127,42 @@ test('FUNC-015: 권장 출발 시각 계산(#22) 전이면 departure는 null, �
   assert.equal(info.departure, null);
   assert.equal(info.place, null);
   assert.equal(info.minutes, 18);
+});
+
+test('#86: 확정 장소의 역 → 장소 도보 분을 경로 정보에 담고 권장 출발 시각 계산에 넘긴다', () => {
+  const walking = [{ ...places[0], walk_minutes: 6 }];
+  const calls = [];
+  const info = buildRouteInfo(confirmation, '희원', { ...base, places: walking, advise: (...args) => { calls.push(args[4]); return advice; } });
+  assert.equal(info.walk_minutes, 6);
+  assert.deepEqual(calls, [6]);
+});
+
+test('#86: 도보 값이 없는 장소(또는 장소를 못 찾음)면 walk_minutes는 null, 지금처럼 역 도착 기준', () => {
+  for (const options of [{ ...base }, { ...base, places: [{ ...places[0], walk_minutes: null }] }, { ...base, places: [] }]) {
+    const calls = [];
+    const info = buildRouteInfo(confirmation, '희원', { ...options, advise: (...args) => { calls.push(args[4]); return advice; } });
+    assert.equal(info.walk_minutes, null);
+    assert.deepEqual(calls, [null]);
+  }
+});
+
+test('#86: 실제 계산 — 만남 역에서 출발해도 도보 값이 있으면 장소 도착 기준 출발 시각이 나온다', () => {
+  const arrival = new Date(confirmation.a);
+  const info = buildRouteInfo(confirmation, '대원', { stationsById, places: [{ ...places[0], walk_minutes: 6 }], now: new Date(2026, 0, 1) });
+  assert.equal(info.same_station, true);
+  assert.equal(arrival.getTime() - info.departure.depart_at.getTime(), (6 + 10) * 60000); // 도보 6분 + 여유 10분
+});
+
+test("#86: 출발 시각 문구 — 도보 값이 있으면 '(장소 도착 기준)', 없으면 '(역 도착 기준)'", () => {
+  const departure = { depart_at: new Date(2026, 9, 5, 17, 20), is_past: false };
+  assert.equal(departText({ walk_minutes: 6, departure }), '17:20쯤 출발하면 여유 있어요 (장소 도착 기준)');
+  assert.equal(departText({ walk_minutes: null, departure }), '17:20쯤 출발하면 여유 있어요 (역 도착 기준)');
+  assert.equal(departText({ walk_minutes: 6, departure: { ...departure, is_past: true } }), '지금 출발하세요 (장소 도착 기준)');
+});
+
+test("#86: 구간 목록 끝 줄 — '○○역에서 장소까지' (도보 값이 없으면 줄 없음)", () => {
+  assert.equal(walkText({ to: stationsById.S3, place: { name: '고깃집' }, walk_minutes: 6 }), '강남역에서 고깃집까지');
+  assert.equal(walkText({ to: stationsById.S3, place: { name: '고깃집' }, walk_minutes: null }), null);
 });
 
 test('FUNC-015: 역 데이터에 없는 역도 이름으로 보여준다', () => {

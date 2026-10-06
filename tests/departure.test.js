@@ -40,6 +40,18 @@ test('FUNC-025: 자정 전후로 날짜가 바뀌어도 맞게 계산된다', ()
   assert.equal(hhmm(month.depart_at), '23:15');
 });
 
+test('#86: 역 → 장소 도보 분을 받으면 장소 도착 기준 — 18:00 도착 · 지하철 24분 · 도보 6분 → 17:20', () => {
+  const advice = departureAdvice(at(2026, 10, 5, 18, 0), 24, [], at(2026, 10, 5, 12, 0), 6);
+  assert.equal(hhmm(advice.depart_at), '17:20');
+});
+
+test('#86: 도보 분이 없거나 이상하면 지금과 같다(역 도착 기준)', () => {
+  const arrival = at(2026, 10, 5, 18, 0);
+  for (const walk of [undefined, null, NaN, -3]) {
+    assert.equal(hhmm(departureAdvice(arrival, 24, [], at(2026, 10, 5, 12, 0), walk).depart_at), '17:26');
+  }
+});
+
 test('FUNC-025: 이미 지난 시각이면 is_past = true', () => {
   const arrival = at(2026, 10, 5, 18, 0); // 출발 17:26
   assert.equal(departureAdvice(arrival, 24, [], at(2026, 10, 5, 17, 0)).is_past, false);

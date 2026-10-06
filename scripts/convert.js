@@ -654,7 +654,17 @@ function buildCandidates(categoryRows, bySlug, issues) {
 }
 
 const PLACE_DETAIL_COLUMNS = ['룸 여부', '최대 인원', '1인 예산', '단체 예약 가능', '좌석 규모', '콘센트', '조용함', '영업 종료 시간', '예약 필요 여부'];
-function buildPlaces(rows, bySlug, issues) {
+
+// '역에서 도보(분)' (#86): 카카오맵 길찾기 도보 값(역 출구 기준, 분 올림). 빈 칸·숫자 아님은 값 없음(null)으로 두고
+//   경고만 한다 — 데이터가 늦어도 배포가 깨지지 않게(종료 코드에 영향 없음). 화면은 값이 없으면 지금처럼 역 도착 기준으로 안내한다
+function walkMinutes(r, issues) {
+  const raw = String(r['역에서 도보(분)'] ?? '').trim();
+  if (/^\d+$/.test(raw)) return Number(raw);
+  issues.warn(raw ? `장소 '역에서 도보(분)'이 숫자가 아님: ${r['가게 이름']} (${raw})` : `장소 '역에서 도보(분)' 빈 칸: ${r['가게 이름']}`);
+  return null;
+}
+
+export function buildPlaces(rows, bySlug, issues) {
   if (!rows.length) { issues.push('장소 탭이 아직 비어 있음 (places.json 은 빈 목록)'); return []; }
   const order = {};
   const out = [];
@@ -670,6 +680,7 @@ function buildPlaces(rows, bySlug, issues) {
       place_id: `P-${s.id}-${purpose}-${n}`, station_id: s.id, purpose, order: n, name: r['가게 이름'],
       category: r['시설 종류'] ?? '', reason: r['한 줄 추천 이유'] ?? '',
       kakao_url: /naver/.test(link) ? '' : link, naver_url: /naver/.test(link) ? link : '',
+      walk_minutes: walkMinutes(r, issues),
       checked_at: r['확인일'] ?? '',
       detail: Object.fromEntries(PLACE_DETAIL_COLUMNS.filter((c) => r[c]).map((c) => [c, r[c]])),
     });
