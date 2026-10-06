@@ -42,16 +42,17 @@ test('FUNC-004: 시연 시나리오 3개를 불러와 추천 결과를 계산하
   }
 });
 
-// ---------- #73: 예시 닉네임 1~3번 = 캐릭터 이름(감이·택이·딜이), 9명까지 캐릭터 그림 구분 ----------
+// ---------- #73: 예시 닉네임 = 캐릭터 이름(모이자 친구들), 9명까지 캐릭터 구분 ----------
 
-test('#73: 예시 시나리오의 1~3번 참여자 이름은 캐릭터 이름(감이·택이·딜이)이라 옆 그림과 짝이 맞는다', () => {
+test('#73: 예시 시나리오의 참여자 이름은 순서대로 캐릭터 이름(감이·택이·딜이·길이·톡이…)이라 옆 그림과 짝이 맞는다', () => {
   for (const s of demo.scenarios) {
-    assert.deepEqual(s.participants.slice(0, 3).map((p) => p.nickname), CHARACTER_NAMES, s.name);
+    assert.deepEqual(s.participants.map((p) => p.nickname), CHARACTER_NAMES.slice(0, s.participants.length), s.name);
   }
 });
 
-test('#73: 캐릭터 이름은 감이·택이·딜이 3개 (4~9번 그림은 이름 없음)', () => {
-  assert.deepEqual(CHARACTER_NAMES, ['감이', '택이', '딜이']);
+test('#73: 캐릭터 이름은 1번부터 9번까지 감이·택이·딜이·길이·톡이·냠이·뭉이·콕이·땡이', () => {
+  assert.deepEqual(CHARACTER_NAMES, ['감이', '택이', '딜이', '길이', '톡이', '냠이', '뭉이', '콕이', '땡이']);
+  assert.equal(CHARACTER_NAMES.length, MAX_PARTICIPANTS);
   for (const name of CHARACTER_NAMES) assert.ok(Array.from(name).length <= NICKNAME_MAX_LENGTH, name);
 });
 

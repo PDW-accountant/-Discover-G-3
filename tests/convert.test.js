@@ -160,7 +160,7 @@ test('FUNC-016: 시연 시나리오 시트를 demo.json으로 바꾼다 (참여�
   const [sc] = result.demo.scenarios;
   assert.equal(sc.purpose, '회식');
   assert.deepEqual(sc.participants.map((p) => [p.nickname, stations.find((s) => s.id === p.origin_station_id).name]), [
-    ['감이', '연신내'], ['택이', '청량리'], ['딜이', '마포'], ['단호박', '압구정'], // 1~3번 닉네임은 캐릭터 이름 (#73)
+    ['감이', '연신내'], ['택이', '청량리'], ['딜이', '마포'], ['길이', '압구정'], // 닉네임은 순서대로 캐릭터 이름 (#73)
   ]);
   assert.deepEqual(sc.expected, { station_id: byName('종로3가').id, score: 18.24, saved_minutes: 4 }); // 10/4 정차 시간 반영 후 기대값
 });

@@ -1,57 +1,61 @@
-// 캐릭터 그림 (감이·택이·딜이 + 4~9번) — 감이·택이·딜이는 모이자 UI 프로토타입2의 SVG를 그대로 옮겼다.
-// 4~9번은 #73의 임시 그림이다(10/6, 이름 없음). 콘텐츠팀 그림이 오면 CHARS의 값만 바꾼다.
+// 캐릭터 그림 '모이자 친구들' 9명 — 1번부터 9번 참여자까지 순서대로 배정된다.
+// 감이(A)·택이(T)·딜이(D)는 모이자 UI 프로토타입2의 SVG를 그대로 옮겼고, 길이(S)·톡이(C)·냠이(M)·뭉이(U)·콕이(Q)·땡이(L)는
+// 콘텐츠팀 캐릭터 시안(10/6)을 같은 틀로 다시 그렸다(#73).
 // 모두 viewBox 200×215, 검정 테두리 6, 주황·노랑 계열. 그림 문자열은 이 파일의 고정 값만으로 만들어지고 사용자 입력은 들어가지 않는다.
 
 const FEET = (x1, x2, y = 196) => `<ellipse cx="${x1}" cy="${y}" rx="14" ry="7"/><ellipse cx="${x2}" cy="${y}" rx="14" ry="7"/>`;
 const OUTLINE = 'stroke="#000" stroke-width="6" stroke-linejoin="round"';
 
-// face: 얼굴 가운데 좌표. body(color): 몸통 SVG
+// name: 캐릭터 이름(예시로 해보기 닉네임으로도 쓴다, 6자 이내). face: 얼굴 가운데 좌표. body(color): 몸통 SVG
 const CHARS = {
   gam: {
-    color: '#F2541B', face: [100, 124],
+    name: '감이', color: '#F2541B', face: [100, 124],
     body: (color) => `${FEET(54, 146)}<path d="M100 22 C108 22 112 27 115 34 L179 174 Q184 190 168 190 L128 190 Q100 158 72 190 L32 190 Q16 190 21 174 L85 34 C88 27 92 22 100 22 Z" fill="${color}" ${OUTLINE}/><path d="M100 58 L112 88 L88 88 Z" fill="#fff" stroke="#000" stroke-width="5" stroke-linejoin="round"/><path d="M100 25 Q99 16 103 13" fill="none" stroke="#000" stroke-width="4" stroke-linecap="round"/><path d="M103 16 Q118 2 132 10 Q118 24 103 16 Z" fill="#45A34B" stroke="#000" stroke-width="4" stroke-linejoin="round"/>`,
   },
   taek: {
-    color: '#FFA53A', face: [100, 66],
+    name: '택이', color: '#FFA53A', face: [100, 66],
     body: (color) => {
       const shape = '<rect x="16" y="40" width="168" height="58" rx="29" transform="rotate(-6 100 69)"/><rect x="64" y="70" width="72" height="122" rx="30"/>';
       return `${FEET(84, 118, 198)}<g fill="${color}" stroke="#000" stroke-width="10" stroke-linejoin="round">${shape}</g><g fill="${color}">${shape}</g><path d="M176 12 L179 21 L188 24 L179 27 L176 36 L173 27 L164 24 L173 21 Z" fill="#FFE14D" stroke="#000" stroke-width="3" stroke-linejoin="round"/>`;
     },
   },
   dil: {
-    color: '#FF7A1A', face: [114, 100],
+    name: '딜이', color: '#FF7A1A', face: [114, 100],
     body: (color) => `<ellipse cx="88" cy="196" rx="14" ry="7"/><ellipse cx="140" cy="194" rx="14" ry="7"/><path d="M58 36 Q56 24 70 24 L96 24 C150 24 180 62 180 106 C180 152 146 190 94 190 L70 190 Q56 190 58 178 Z" fill="${color}" ${OUTLINE}/><path d="M118 25 Q112 8 128 9" fill="none" stroke="#000" stroke-width="5" stroke-linecap="round"/>`,
   },
-  // ---- 4~9번: 임시 그림 (#73) ----
-  square: {
-    color: '#FFC24B', face: [100, 112],
-    body: (color) => `${FEET(66, 134)}<rect x="30" y="34" width="140" height="156" rx="34" fill="${color}" ${OUTLINE}/><path d="M100 34 Q96 18 110 12" fill="none" stroke="#000" stroke-width="5" stroke-linecap="round"/>`,
+  // ---- 4~9번: 콘텐츠팀 '모이자 친구들' (#73, 10/6) ----
+  gil: {
+    name: '길이', color: '#2EC4A6', face: [100, 112],
+    body: (color) => {
+      const s = 'M148 58 C132 28 52 30 52 74 C52 116 148 100 148 146 C148 188 66 190 50 158';
+      return `${FEET(74, 128, 198)}<path d="${s}" fill="none" stroke="#000" stroke-width="66" stroke-linecap="round" stroke-linejoin="round"/><path d="${s}" fill="none" stroke="${color}" stroke-width="54" stroke-linecap="round" stroke-linejoin="round"/><path d="M152 34 L152 8" stroke="#000" stroke-width="5" stroke-linecap="round"/><path d="M152 8 L176 16 L152 24 Z" fill="#E8603C" stroke="#000" stroke-width="4" stroke-linejoin="round"/>`;
+    },
   },
-  house: {
-    color: '#E8603C', face: [100, 138],
-    body: (color) => `${FEET(66, 134)}<rect x="132" y="34" width="22" height="44" fill="#FFC9B5" ${OUTLINE}/><path d="M100 18 L184 94 L164 94 L164 190 L36 190 L36 94 L16 94 Z" fill="${color}" ${OUTLINE}/>`,
+  tok: {
+    name: '톡이', color: '#FFC93C', face: [78, 118],
+    body: (color) => `${FEET(76, 122, 198)}<path d="M164 72 A76 76 0 1 0 164 152 L116 112 Z" fill="${color}" ${OUTLINE}/><path d="M136 8 L184 8 Q190 8 190 14 L190 32 Q190 38 184 38 L152 38 L142 48 L142 38 L136 38 Q130 38 130 32 L130 14 Q130 8 136 8 Z" fill="#fff" stroke="#000" stroke-width="4" stroke-linejoin="round"/><circle cx="147" cy="23" r="3.5"/><circle cx="160" cy="23" r="3.5"/><circle cx="173" cy="23" r="3.5"/>`,
   },
-  cloud: {
-    color: '#F7A58A', face: [104, 136],
-    body: (color) => `${FEET(70, 134, 192)}<path d="M44 180 C14 180 10 132 42 124 C36 84 82 66 102 94 C114 56 170 62 166 108 C196 110 196 176 164 180 Z" fill="${color}" ${OUTLINE}/>`,
+  nyam: {
+    name: '냠이', color: '#FF7F8E', face: [100, 104],
+    body: (color) => `${FEET(48, 152)}<path d="M28 190 L28 46 Q28 28 46 30 L72 32 L100 76 L128 32 L154 30 Q172 28 172 46 L172 190 L130 190 L130 132 L100 168 L70 132 L70 190 Z" fill="${color}" ${OUTLINE}/><path d="M138 120 Q131 132 138 138 Q145 132 138 120 Z" fill="#5AB4F5" stroke="#000" stroke-width="2.5" stroke-linejoin="round"/>`,
   },
-  drop: {
-    color: '#FF9A5A', face: [100, 140],
-    body: (color) => `${FEET(72, 128, 198)}<path d="M100 14 C120 54 170 98 170 140 C170 178 138 192 100 192 C62 192 30 178 30 140 C30 98 80 54 100 14 Z" fill="${color}" ${OUTLINE}/><path d="M62 132 Q60 110 74 94" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/>`,
+  mung: {
+    name: '뭉이', color: '#A98BEB', face: [100, 162],
+    body: (color) => `${FEET(70, 130, 200)}<path d="M26 34 L82 34 L82 116 Q82 136 100 136 Q118 136 118 116 L118 34 L174 34 L174 132 Q174 194 100 194 Q26 194 26 132 Z" fill="${color}" ${OUTLINE}/><path d="M100 104 C86 92 84 76 94 72 C98 70 100 74 100 78 C100 74 102 70 106 72 C116 76 114 92 100 104 Z" fill="#FF7F8E" stroke="#000" stroke-width="4" stroke-linejoin="round"/>`,
   },
-  hexagon: {
-    color: '#F2785C', face: [100, 108],
-    body: (color) => `${FEET(72, 128, 186)}<path d="M100 20 L174 62 L174 150 L100 192 L26 150 L26 62 Z" fill="${color}" ${OUTLINE}/>`,
+  kok: {
+    name: '콕이', color: '#4DA8F5', face: [100, 120],
+    body: (color) => `${FEET(84, 116, 200)}<path d="M100 194 L48 134 C20 104 24 52 58 32 C86 16 126 18 150 42 C182 76 178 112 152 134 Z" fill="${color}" ${OUTLINE}/><circle cx="100" cy="70" r="16" fill="#fff" stroke="#000" stroke-width="6"/>`,
   },
-  dome: {
-    color: '#FFB347', face: [100, 128],
-    body: (color) => `${FEET(64, 136)}<path d="M22 188 Q22 38 100 30 Q178 38 178 188 Z" fill="${color}" ${OUTLINE}/><path d="M150 24 L153 33 L162 36 L153 39 L150 48 L147 39 L138 36 L147 33 Z" fill="#FFE14D" stroke="#000" stroke-width="3" stroke-linejoin="round"/>`,
+  ttaeng: {
+    name: '땡이', color: '#7AC943', face: [128, 158],
+    body: (color) => `${FEET(64, 150, 200)}<path d="M36 26 L86 26 L86 132 L174 132 L174 192 L36 192 Z" fill="${color}" ${OUTLINE}/><path d="M100 30 L114 22 M104 44 L120 42 M100 58 L114 64" stroke="#000" stroke-width="4" stroke-linecap="round"/>`,
   },
 };
-const SLOT = ['gam', 'taek', 'dil', 'square', 'house', 'cloud', 'drop', 'hexagon', 'dome'];
+const SLOT = ['gam', 'taek', 'dil', 'gil', 'tok', 'nyam', 'mung', 'kok', 'ttaeng'];
 
-/** 1~3번째 참여자의 캐릭터 이름. 예시로 해보기 닉네임과 짝을 맞춘다(#73). 4~9번 그림은 이름이 없다. */
-export const CHARACTER_NAMES = ['감이', '택이', '딜이'];
+/** 참여자 순서대로의 캐릭터 이름(1번 감이 … 9번 땡이). 예시로 해보기 닉네임과 짝을 맞춘다(#73). */
+export const CHARACTER_NAMES = SLOT.map((key) => CHARS[key].name);
 
 const CHEEK = '<ellipse cx="-32" cy="16" rx="10" ry="6" fill="#FFC9B5"/><ellipse cx="32" cy="16" rx="10" ry="6" fill="#FFC9B5"/>';
 const EYES = '<circle cx="-18" r="7"/><circle cx="-20" cy="-2.5" r="2.4" fill="#fff"/><circle cx="18" r="7"/><circle cx="16" cy="-2.5" r="2.4" fill="#fff"/>';
