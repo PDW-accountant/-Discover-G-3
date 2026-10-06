@@ -60,8 +60,8 @@ export function kakaoMapLink(to) {
  *   nickname, from: Station, to: Station, same_station: boolean,
  *   minutes: number, transfers: number|null, steps: Array<{line, train: 'express'|'local'|null, from: Station, to: Station, minutes}>,
  *   is_estimated: boolean, departure: {depart_at: Date, summary: string, is_past: boolean}|null,
- *   place: {name, url}|null
- * }} 명단에 없는 닉네임이면 null
+ *   place: {name, url}|null, walk_minutes: number|null
+ * }} 명단에 없는 닉네임이면 null. walk_minutes: 만남 역 → 확정 장소 도보 분(#86, places.json). 없으면 역 도착 기준
  */
 export function buildRouteInfo(confirmation, nickname, {
   stationsById = {}, graph = null, places = [], now = new Date(),
@@ -92,9 +92,13 @@ export function buildRouteInfo(confirmation, nickname, {
     }))
     : [];
 
+  // 장소 데이터의 도보 분(#86). 공유 링크에는 넣지 않고 장소 데이터에서 읽으므로 이미 만든 링크도 그대로 열린다
+  const walk = places.find((p) => p.place_id === confirmation?.pl)?.walk_minutes;
+  const walkMinutes = Number.isFinite(walk) ? walk : null;
+
   let departure = null;
   try {
-    const advice = advise(new Date(confirmation.a), minutes, steps, now);
+    const advice = advise(new Date(confirmation.a), minutes, steps, now, walkMinutes);
     if (advice?.depart_at instanceof Date && !Number.isNaN(advice.depart_at.getTime())) departure = advice;
   } catch {
     departure = null; // 권장 출발 시각(#22) 구현 전 → 그 줄을 숨긴다
@@ -111,7 +115,32 @@ export function buildRouteInfo(confirmation, nickname, {
     is_estimated: !sameStation && !computed,
     departure,
     place: meetingPlace(confirmation, places, to.name, link),
+    walk_minutes: walkMinutes,
   };
+}
+
+/** 권장 출발 시각 문구 + 기준: '17:20쯤 출발하면 여유 있어요 (장소 도착 기준)'. 도보 값이 없으면 '(역 도착 기준)' (#86) */
+export function departText(info) {
+  const at = info.departure.depart_at;
+  const when = info.departure.is_past ? t('route.leaveNow') : t('route.departAt', { time: `${pad(at.getHours())}:${pad(at.getMinutes())}` });
+  return `${when} ${t(info.walk_minutes !== null ? 'route.departAtPlace' : 'route.departAtStation')}`;
+}
+
+/** 구간 목록 끝 줄의 글자: '강남역에서 고깃집까지'. 도보 값이 없으면 null(줄을 그리지 않는다) (#86) */
+export function walkText(info) {
+  if (info.walk_minutes === null) return null;
+  return t('route.walkToPlace', { station: info.to.name, place: info.place?.name ?? '' });
+}
+
+/** 구간 목록 끝에 붙는 '[도보] ○○역에서 장소까지 n분' 줄 */
+function walkRow(info) {
+  const text = walkText(info);
+  if (!text) return null;
+  return el('li', { className: 'walk' }, [
+    el('span', { className: 'train', textContent: t('route.walk') }),
+    el('span', { className: 'seg', textContent: text }),
+    el('span', { className: 'min', textContent: t('route.minutes', { minutes: info.walk_minutes }) }),
+  ]);
 }
 
 /** 확정된 만남 장소 {name, url}. 장소 데이터에서 찾지 못하면 null (그 줄을 숨긴다). */
@@ -145,16 +174,29 @@ function placeNode(place, className = 'route-place top') {
   ]);
 }
 
-/** 캘린더 등록 칸(#75). 권장 출발 시각이 없으면(계산 실패) 도착 − 소요 − 여유 10분으로 잡는다. */
+/** 캘린더 등록 칸(#75). 권장 출발 시각이 없으면(계산 실패) 도착 − (소요 + 도보) − 여유 10분으로 잡는다. */
 function calendarRow(info, meeting) {
   const arrival = new Date(meeting.arrival);
-  const departAt = info.departure?.depart_at ?? new Date(arrival.getTime() - (info.minutes + BUFFER_MINUTES) * 60000);
+  const departAt = info.departure?.depart_at ?? new Date(arrival.getTime() - (info.minutes + (info.walk_minutes ?? 0) + BUFFER_MINUTES) * 60000);
   return calendarControls({ ...meeting, from: info.from.name, nickname: info.nickname, departAt, minutes: info.minutes });
 }
 
-/** 펼친 칸의 내용: 지도 → 요약 → 구간 → 권장 출발 시각 → 캘린더 등록 (만남 장소는 화면 위쪽에만) */
+function departNode(info) {
+  if (!info.departure) return null;
+  return el('div', { className: info.departure.is_past ? 'depart now' : 'depart' }, [departText(info)]);
+}
+
+/** 펼친 칸의 내용: 지도 → 요약 → 구간(+ 장소까지 도보) → 권장 출발 시각 → 캘린더 등록 (만남 장소는 화면 위쪽에만) */
 function routeBody(info, meeting) {
-  if (info.same_station) return [el('div', { className: 'route' }, [t('route.same')]), calendarRow(info, meeting)].filter(Boolean);
+  if (info.same_station) {
+    // 만남 역에서 출발해도 장소까지 걷는 시간이 있으면 그 줄과 출발 시각을 보여준다(#86)
+    const walk = walkRow(info);
+    return [
+      el('div', { className: 'route' }, [t('route.same')]),
+      ...(walk ? [el('ol', { className: 'steps' }, [walk]), departNode(info)] : []),
+      calendarRow(info, meeting),
+    ].filter(Boolean);
+  }
 
   const mapBox = el('div', { className: 'map-box' });
   let drawn = false;
@@ -171,20 +213,14 @@ function routeBody(info, meeting) {
 
   // 요약 줄·구간 목록은 추천 결과 화면의 경로 카드(#53)와 같이 lib/route-steps.js로 그린다
   const summary = routeSummary(info);
-  const steps = stepList(info.steps);
-
-  let departRow = null;
-  if (info.departure) {
-    const at = info.departure.depart_at;
-    departRow = el('div', { className: info.departure.is_past ? 'depart now' : 'depart' }, [
-      info.departure.is_past
-        ? t('route.leaveNow')
-        : t('route.departAt', { time: `${pad(at.getHours())}:${pad(at.getMinutes())}` }),
-    ]);
-  }
+  // 구간 목록 끝에 '[도보] ○○역에서 장소까지 n분' 줄(#86). 구간이 없으면(예상 시간) 그 줄만
+  const walk = walkRow(info);
+  let steps = stepList(info.steps);
+  if (walk && steps) steps.append(walk);
+  else if (walk) steps = el('ol', { className: 'steps' }, [walk]);
 
   const notices = rareServiceNotices([info.from, info.to]).map((text) => el('p', { className: 'notice', textContent: text }));
-  return [mapBox, summary, ...notices, ...[steps, departRow, calendarRow(info, meeting)].filter(Boolean)];
+  return [mapBox, summary, ...notices, ...[steps, departNode(info), calendarRow(info, meeting)].filter(Boolean)];
 }
 
 function showMessage(container, text) {

@@ -1,9 +1,18 @@
-import { test } from 'node:test';
+import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { arrivalClock, compareKind, computeResult, routeCardInfo, roundUpTo5 } from '../src/js/screens/result.js';
+import { readFile } from 'node:fs/promises';
+import { loadData } from '../src/js/lib/data.js';
+import { arrivalClock, compareKind, computeResult, placeMeta, routeCardInfo, roundUpTo5 } from '../src/js/screens/result.js';
 
 // 실행: npm test
+
+// 문구(data/copy.json)를 화면처럼 loadData()로 불러 둔다
+before(async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = async (url) => ({ json: async () => JSON.parse(await readFile(new URL(`../${url}`, import.meta.url), 'utf8')) });
+  try { await loadData(); } finally { globalThis.fetch = original; }
+});
 
 const read = (name) => JSON.parse(readFileSync(new URL(`../data/${name}.json`, import.meta.url), 'utf8'));
 const data = { stations: read('stations'), transitGraph: read('transit-graph'), candidates: read('candidates'), places: read('places') };
@@ -13,6 +22,13 @@ const participants = [
   { participant_id: 'p_b', nickname: '2번', origin_station_id: idOf('잠실') },
   { participant_id: 'p_c', nickname: '대원', origin_station_id: idOf('사당') },
 ];
+
+test("#86: 장소 카드 설명 — 추천 이유 다음 줄에 '역에서 도보 n분', 도보 값이 없으면 그 줄을 생략", () => {
+  assert.deepEqual(placeMeta({ category: '', reason: '역 바로 앞, 저렴함', walk_minutes: 6 }), ['역 바로 앞, 저렴함', '역에서 도보 6분']);
+  assert.deepEqual(placeMeta({ category: '보드게임카페', reason: '역 바로 앞', walk_minutes: null }), ['보드게임카페 · 역 바로 앞']);
+  assert.deepEqual(placeMeta({ reason: '역 바로 앞' }), ['역 바로 앞']);
+  assert.deepEqual(placeMeta({ reason: '', walk_minutes: 3 }), ['역에서 도보 3분']);
+});
 
 test("FUNC-009: '모두 N분 안에'는 최장 시간을 5분 단위로 올린다", () => {
   assert.equal(roundUpTo5(31), 35);

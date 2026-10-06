@@ -32,20 +32,22 @@ export function routeSummary(steps = []) {
 }
 
 /**
- * 권장 출발 시각 = 도착 희망 시각 − 소요시간 − 여유 10분 (분 단위 내림).
- * 예: 18:00 도착 · 24분 → 17:26
+ * 권장 출발 시각 = 도착 희망 시각 − (소요시간 + 역 → 장소 도보) − 여유 10분 (분 단위 내림).
+ * 예: 18:00 도착 · 24분 → 17:26, 도보 6분까지 → 17:20 (#86: 만남 역이 아니라 장소 도착 기준)
  * @param {Date} arrivalTime
  * @param {number} minutes
  * @param {Array} steps 경로 단계 (이동 방법 요약용: 첫 노선, 환승 횟수)
  * @param {Date} [now]
+ * @param {number|null} [walkMinutes] 만남 역 → 장소 도보 분(places.json walk_minutes). 없으면 역 도착 기준
  * @returns {{depart_at: Date, summary: string, is_past: boolean}} is_past면 화면에 '지금 출발하세요'
  */
-export function departureAdvice(arrivalTime, minutes, steps = [], now = new Date()) {
+export function departureAdvice(arrivalTime, minutes, steps = [], now = new Date(), walkMinutes = 0) {
   const arrival = new Date(arrivalTime);
   if (Number.isNaN(arrival.getTime())) throw new Error('도착 희망 시각이 올바르지 않습니다');
   const travel = Number.isFinite(minutes) && minutes > 0 ? minutes : 0;
+  const walk = Number.isFinite(walkMinutes) && walkMinutes > 0 ? walkMinutes : 0;
   // 밀리초로 빼므로 자정·날짜가 바뀌어도 그대로 맞다.
-  const raw = arrival.getTime() - (travel + BUFFER_MINUTES) * MINUTE_MS;
+  const raw = arrival.getTime() - (travel + walk + BUFFER_MINUTES) * MINUTE_MS;
   const departAt = new Date(Math.floor(raw / MINUTE_MS) * MINUTE_MS);
   return {
     depart_at: departAt,

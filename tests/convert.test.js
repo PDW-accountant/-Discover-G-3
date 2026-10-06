@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  convert, formatJson, decodeText, parseCsv, matchKey, canonicalName, buildStations, findSkipped, betweenStation, lineOf,
+  convert, formatJson, decodeText, parseCsv, matchKey, canonicalName, buildStations, findSkipped, betweenStation, lineOf, buildPlaces,
 } from '../scripts/convert.js';
 
 // 실행: npm test   (FUNC-016 #14 데이터 변환)
@@ -91,6 +91,25 @@ test('FUNC-016: 장소 탭을 places.json으로 바꾼다 (역·목적별 순서
   const first = result.places.find((p) => p.station_id === byName('종로3가').id && p.purpose === '회식' && p.order === 1);
   assert.equal(first.name, '시민식당 본점');
   assert.ok(result.places.every((p) => p.kakao_url.startsWith('https://') && p.reason));
+});
+
+test("#86: 장소 탭의 '역에서 도보(분)'을 walk_minutes(정수)로 바꾼다", () => {
+  const at = (station, purpose, order) => result.places.find((p) => p.station_id === byName(station).id && p.purpose === purpose && p.order === order);
+  assert.equal(at('종로3가', '회식', 1).walk_minutes, 3); // 시민식당 본점: 2-1번 출구 187m
+  assert.equal(at('디지털미디어시티', '오락', 1).name, '게임파티룸 다락'); // 10/6 홍대 쪽 장소에서 교체
+  assert.equal(at('디지털미디어시티', '오락', 1).walk_minutes, 6);
+  assert.ok(result.places.every((p) => Number.isInteger(p.walk_minutes)));
+});
+
+test("#86: '역에서 도보(분)'이 비었거나 숫자가 아니면 값 없음(null)으로 두고 경고만 한다 (검사 결과에는 넣지 않음)", () => {
+  const list = Object.assign([], { warnings: [], warn(m) { this.warnings.push(m); }, note() {} });
+  const bySlug = { s1: { id: 'S1' } };
+  const row = (name, walk) => ({ '역 id': 's1', '모임 종류': '회식/식사', '가게 이름': name, '지도 링크': 'https://place.map.kakao.com/1', '역에서 도보(분)': walk });
+  const out = buildPlaces([row('가', ' 7 '), row('나', ''), row('다', '약 5'), row('라', undefined)], bySlug, list);
+  assert.deepEqual(out.map((p) => p.walk_minutes), [7, null, null, null]);
+  assert.deepEqual([...list], []);
+  assert.equal(list.warnings.length, 3);
+  assert.match(list.warnings[1], /다/);
 });
 
 test('FUNC-016: 서울 안 역은 모두 그래프로 이어진다 (직선거리 대체가 필요 없다)', () => {
