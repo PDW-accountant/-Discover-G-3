@@ -23,10 +23,11 @@ const participants = [
   { participant_id: 'p_c', nickname: '대원', origin_station_id: idOf('사당') },
 ];
 
-test("#86: 장소 카드 둘째 줄 — 추천 이유 뒤에 '역에서 도보 n분', 도보 값이 없으면 생략", () => {
-  assert.equal(placeMeta({ category: '', reason: '역 바로 앞, 저렴함', walk_minutes: 6 }), '역 바로 앞, 저렴함 · 역에서 도보 6분');
-  assert.equal(placeMeta({ category: '보드게임카페', reason: '역 바로 앞', walk_minutes: null }), '보드게임카페 · 역 바로 앞');
-  assert.equal(placeMeta({ reason: '역 바로 앞' }), '역 바로 앞');
+test("#86: 장소 카드 설명 — 추천 이유 다음 줄에 '역에서 도보 n분', 도보 값이 없으면 그 줄을 생략", () => {
+  assert.deepEqual(placeMeta({ category: '', reason: '역 바로 앞, 저렴함', walk_minutes: 6 }), ['역 바로 앞, 저렴함', '역에서 도보 6분']);
+  assert.deepEqual(placeMeta({ category: '보드게임카페', reason: '역 바로 앞', walk_minutes: null }), ['보드게임카페 · 역 바로 앞']);
+  assert.deepEqual(placeMeta({ reason: '역 바로 앞' }), ['역 바로 앞']);
+  assert.deepEqual(placeMeta({ reason: '', walk_minutes: 3 }), ['역에서 도보 3분']);
 });
 
 test("FUNC-009: '모두 N분 안에'는 최장 시간을 5분 단위로 올린다", () => {

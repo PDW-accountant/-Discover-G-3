@@ -98,10 +98,10 @@ export function routeCardInfo(participant, time, stationsById, destination, expr
   };
 }
 
-/** 장소 카드 둘째 줄: '추천 이유 · 역에서 도보 n분' (프로토타입 장소 목록 모양). 도보 값이 없으면 생략 (#86) */
+/** 장소 카드 설명 줄들: ['추천 이유', '역에서 도보 n분']. 도보는 설명 다음 줄에 따로 쓰고, 값이 없으면 생략 (#86) */
 export function placeMeta(place) {
   const walk = Number.isFinite(place.walk_minutes) ? t('place.walk', { minutes: place.walk_minutes }) : '';
-  return [place.category, place.reason, walk].filter(Boolean).join(' · ');
+  return [[place.category, place.reason].filter(Boolean).join(' · '), walk].filter(Boolean);
 }
 
 function lineBadges(lines = []) {
@@ -237,7 +237,7 @@ export async function render(container, params = {}) {
         return el('div', { className: on ? 'place sel' : 'place' }, [
           el('div', {}, [
             el('b', { textContent: place.name }),
-            el('em', { textContent: placeMeta(place) }),
+            ...placeMeta(place).flatMap((line, i) => [...(i ? [el('br')] : []), el('em', { textContent: line })]),
           ]),
           el('div', { className: 'pl-btns' }, [
             el('a', { className: 'mini', href: placeLink(place), target: '_blank', rel: 'noopener', textContent: t('result.view') }),
