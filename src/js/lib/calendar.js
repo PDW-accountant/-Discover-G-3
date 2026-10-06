@@ -145,21 +145,19 @@ export function externalBrowserUrl(url) {
 }
 
 /**
- * 약속 하나의 캘린더 일정(.ics 입력값과 구글 링크). 화면 문구는 copy.json(calendar.*).
- * @param {{arrival: Date|string, station: string, place?: string, url: string, departAt: Date, minutes: number, from?: string, app?: string}} meeting
- *   from이 있으면 참여자용 설명('○○역에서 17:26 출발'), 없으면 총무용('가장 오래 걸리는 사람 기준')
+ * 한 참여자의 약속 캘린더 일정(.ics 입력값과 구글 링크). 화면 문구는 copy.json(calendar.*).
+ * @param {{arrival: Date|string, station: string, place?: string, url: string, departAt: Date, minutes: number, from: string, nickname?: string, app?: string}} meeting
+ *   from = 출발역 이름(설명 '○○역에서 17:26 출발'), nickname = 외부 브라우저로 넘길 때 칸을 펼칠 사람
  */
 export function meetingEvent({ arrival, station, place, url, departAt, minutes, from, app = t('app.name') }) {
   const start = new Date(arrival);
   const time = `${pad(start.getHours())}:${pad(start.getMinutes())}`;
   const depart = `${pad(new Date(departAt).getHours())}:${pad(new Date(departAt).getMinutes())}`;
   const title = place ? t('calendar.title', { app, station, place }) : t('calendar.titleNoPlace', { app, station });
-  const description = from
-    ? t('calendar.description', { from, depart, minutes, url })
-    : t('calendar.descriptionHost', { depart, minutes, url });
+  const description = t('calendar.description', { from, depart, minutes, url });
   const location = place ? t('calendar.location', { station, place }) : t('join.stationName', { name: station });
   return {
-    uid: `${start.getTime()}-${encodeURIComponent(from ?? 'host')}@eodiga3.vercel.app`,
+    uid: `${start.getTime()}-${encodeURIComponent(from)}@eodiga3.vercel.app`,
     title, start, location, description, url,
     alarms: [
       { trigger: midnightTrigger(start), text: t('calendar.alarmDay', { time, station }) },
@@ -169,8 +167,8 @@ export function meetingEvent({ arrival, station, place, url, departAt, minutes, 
 }
 
 /**
- * 화면에 붙일 캘린더 등록 칸: [내 캘린더에 추가] 버튼 + 구글 캘린더 링크 + 안내.
- * 카카오톡 안 브라우저면 버튼이 [브라우저에서 열어 캘린더에 추가](약속 링크를 크롬·사파리로 열기)가 된다.
+ * 개인 경로 화면의 본인 칸에 붙일 캘린더 등록 칸: [내 캘린더에 추가] 버튼 + 구글 캘린더 링크 + 안내.
+ * 카카오톡 안 브라우저면 버튼이 [브라우저에서 열어 캘린더에 추가](약속 링크를 ?cal=닉네임 과 함께 크롬·사파리로 열기)가 된다.
  * @param {Parameters<typeof meetingEvent>[0]} meeting
  * @param {{kakaoTalk?: boolean, win?: Window}} options 검사용
  * @returns {HTMLElement|null} 도착 시각이 이상하면 null(칸을 숨긴다)

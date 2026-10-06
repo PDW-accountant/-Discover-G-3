@@ -78,16 +78,15 @@ test('#75: 구글 캘린더 링크는 제목·시각(UTC)·설명·장소를 담
   assert.equal(url.searchParams.get('location'), '장소');
 });
 
-test('#75: 약속 일정 — 참여자용은 출발역·출발 시각, 총무용은 가장 오래 걸리는 사람 기준, 알림은 당일 자정·약속 1시간 전', () => {
+test('#75: 약속 일정 — 출발역·출발 시각이 설명에, 알림은 당일 자정·약속 1시간 전, 장소가 없으면 역 이름만', () => {
   const mine = meetingEvent({ arrival, station: '종로3가', place: '시민식당 본점', url: 'https://x/?room=a', departAt, minutes: 24, from: '연신내', app: '어디Gㅏ3' });
   assert.equal(mine.title, 'calendar.title'); // 검사 환경에는 copy.json이 없어 키 이름이 보인다
   assert.equal(mine.start.getTime(), arrival.getTime());
   assert.equal(mine.url, 'https://x/?room=a');
   assert.deepEqual(mine.alarms.map((a) => a.trigger), ['-PT18H', '-PT1H']);
   assert.match(mine.uid, /^\d+-%EC%97%B0%EC%8B%A0%EB%82%B4@eodiga3\.vercel\.app$/); // 한글은 피해 쓴다
-  const host = meetingEvent({ arrival, station: '종로3가', url: 'https://x/?room=a', departAt, minutes: 24, app: '어디Gㅏ3' });
-  assert.equal(host.title, 'calendar.titleNoPlace');
-  assert.match(host.uid, /-host@/);
+  const noPlace = meetingEvent({ arrival, station: '종로3가', url: 'https://x/?room=a', departAt, minutes: 24, from: '연신내', app: '어디Gㅏ3' });
+  assert.equal(noPlace.title, 'calendar.titleNoPlace');
 });
 
 test('#75: 카카오톡 안 브라우저는 .ics를 못 열어 약속 링크를 기기 기본 브라우저로 여는 카카오톡 주소를 쓴다', () => {
@@ -95,7 +94,7 @@ test('#75: 카카오톡 안 브라우저는 .ics를 못 열어 약속 링크를 
   // 크롬에서 열린 경로 화면이 그 사람 칸을 펼치도록 ?cal=닉네임 을 붙인다. #d= 링크는 # 앞에 붙어 확정 정보가 그대로다
   assert.equal(withCalendarFlag('https://x.test/?room=abc', '감이'), 'https://x.test/?room=abc&cal=%EA%B0%90%EC%9D%B4');
   assert.equal(withCalendarFlag('https://x.test/#d=eyJ2IjoxfQ', '감이'), 'https://x.test/?cal=%EA%B0%90%EC%9D%B4#d=eyJ2IjoxfQ');
-  assert.equal(withCalendarFlag('https://x.test/#d=eyJ2IjoxfQ'), 'https://x.test/?cal=#d=eyJ2IjoxfQ'); // 총무: 사람 없음 → 첫 사람
+  assert.equal(withCalendarFlag('https://x.test/#d=eyJ2IjoxfQ'), 'https://x.test/?cal=#d=eyJ2IjoxfQ'); // 사람 없으면 첫 사람 칸
   assert.equal(withCalendarFlag('이상한 주소', '감이'), '이상한 주소');
   assert.equal(calendarFlagOf('https://x.test/?cal=%EA%B0%90%EC%9D%B4#d=eyJ2IjoxfQ'), '감이');
   assert.equal(calendarFlagOf('https://x.test/?room=abc&cal='), '');

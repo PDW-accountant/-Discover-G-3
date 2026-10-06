@@ -203,7 +203,6 @@
   "calendar.titleNoPlace": "{app} · {station}역",
   "calendar.location": "{station}역 {place}",
   "calendar.description": "{from}역에서 {depart} 출발 · 약 {minutes}분 · 경로 보기 {url}",
-  "calendar.descriptionHost": "가장 오래 걸리는 사람 기준 {depart} 출발 · 약 {minutes}분 · 경로 보기 {url}",
   "calendar.alarmDay": "오늘 {time} {station}역 약속이 있어요",
   "calendar.alarmBefore": "1시간 뒤 {station}역 {time} 약속",
   "calendar.openExternal": "브라우저에서 열어 캘린더에 추가",

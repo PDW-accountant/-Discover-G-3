@@ -3,7 +3,7 @@
 // → 아래 고정 버튼 '나의 경로 확인하기'. 참여자별 소요시간·권장 출발 시각은 개인 경로 화면(route.js, FUNC-015)에서 보여준다.
 // 공유 링크(share_url)는 화면에 그리지 않고 아래 '카카오톡으로 보내기'·'링크 복사' 버튼(FUNC-013)에서 쓴다.
 // 카카오 JS 키가 없으면 카카오 버튼을 숨기고 링크 복사만 보여준다. 복사가 막히면 링크를 선택 가능한 칸으로 보여준다.
-// 티켓 아래 '내 캘린더에 추가'(#75, 총무용): 가장 오래 걸리는 참여자의 권장 출발 시각 기준으로 알림(당일 자정·출발 1시간 전).
+// 캘린더 등록(#75)은 이 화면에 두지 않고 개인 경로 화면(route.js)의 본인 칸에만 둔다(10/6 대원: 누가 누른 건지 칸으로 알 수 있게).
 // 문구는 lib/data.js의 t()로 읽는다.
 //
 // params 두 가지 (둘 중 하나):
@@ -22,8 +22,6 @@ import { addMeeting, clearDraft, getHostToken } from '../lib/storage.js';
 import { createConfirmation, hashUrl, roomUrl } from '../lib/share-link.js';
 import { placeLink } from '../lib/places.js';
 import { buildShareMessage, canShareKakao, copyLink, formatMeetingTime, shareKakao } from '../lib/share.js';
-import { departureAdvice } from '../lib/departure.js';
-import { calendarControls } from '../lib/calendar.js';
 import { createShell, el, go } from '../lib/shell.js';
 import { characterNode } from '../lib/characters.js';
 import { render as renderRoute } from './route.js';
@@ -43,18 +41,6 @@ function linkFor(place, stationName) {
   } catch {
     return place.kakao_url || `https://map.kakao.com/link/search/${encodeURIComponent(`${stationName} ${place.name}`)}`;
   }
-}
-
-/** 총무용 캘린더 등록 칸(#75): 가장 오래 걸리는 사람의 권장 출발 시각(도착 − 소요 − 여유 10분) 기준 */
-function hostCalendar(confirmation, stationName, placeName) {
-  const slowest = Math.max(...confirmation.people.map((p) => p.m));
-  let departAt;
-  try {
-    departAt = departureAdvice(new Date(confirmation.a), slowest).depart_at;
-  } catch {
-    return null;
-  }
-  return calendarControls({ arrival: confirmation.a, station: stationName, place: placeName, url: confirmation.share_url, departAt, minutes: slowest });
 }
 
 /** 안내 문구 한 줄만 있는 화면 */
@@ -106,7 +92,6 @@ function drawSummary(container, confirmation, { stations, places, roomId, notice
       ]),
     ]),
     ...(notice ? [el('p', { className: 'error', role: 'alert', textContent: notice })] : []),
-    ...[hostCalendar(confirmation, stationName, place?.name)].filter(Boolean),
     copyBox,
   ]));
 
