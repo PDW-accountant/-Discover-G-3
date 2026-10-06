@@ -205,5 +205,7 @@
   "calendar.description": "{from}역에서 {depart} 출발 · 약 {minutes}분 · 경로 보기 {url}",
   "calendar.descriptionHost": "가장 오래 걸리는 사람 기준 {depart} 출발 · 약 {minutes}분 · 경로 보기 {url}",
   "calendar.alarmDay": "오늘 {time} {station}역 약속이 있어요",
-  "calendar.alarmDepart": "1시간 뒤 출발 · {station}역 {time} 약속"
+  "calendar.alarmDepart": "1시간 뒤 출발 · {station}역 {time} 약속",
+  "calendar.openExternal": "브라우저에서 열어 캘린더에 추가",
+  "calendar.kakaoHint": "카카오톡 안에서는 캘린더 파일을 열 수 없어요. 크롬·사파리로 열린 화면에서 '내 캘린더에 추가'를 눌러 주세요"
 }

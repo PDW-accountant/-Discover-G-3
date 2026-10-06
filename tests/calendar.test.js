@@ -1,8 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  DEPART_LEAD_MINUTES, EVENT_HOURS, buildIcs, departTrigger, downloadIcs, escapeText, foldLine, googleCalendarUrl, icsDate, meetingEvent, midnightTrigger,
+  DEPART_LEAD_MINUTES, EVENT_HOURS, buildIcs, departTrigger, downloadIcs, escapeText, externalBrowserUrl, foldLine, googleCalendarUrl, icsDate, meetingEvent, midnightTrigger,
 } from '../src/js/lib/calendar.js';
+import { isKakaoTalk } from '../src/js/lib/shell.js';
 
 // 실행: npm test   (#75 약속 리마인드 — 캘린더 등록)
 
@@ -88,6 +89,13 @@ test('#75: 약속 일정 — 참여자용은 출발역·출발 시각, 총무용
   const host = meetingEvent({ arrival, station: '종로3가', url: 'https://x/?room=a', departAt, minutes: 24, app: '어디Gㅏ3' });
   assert.equal(host.title, 'calendar.titleNoPlace');
   assert.match(host.uid, /-host@/);
+});
+
+test('#75: 카카오톡 안 브라우저는 .ics를 못 열어 약속 링크를 기기 기본 브라우저로 여는 카카오톡 주소를 쓴다', () => {
+  assert.equal(externalBrowserUrl('https://eodiga3.vercel.app/?room=abc'), 'kakaotalk://web/openExternal?url=https%3A%2F%2Feodiga3.vercel.app%2F%3Froom%3Dabc');
+  assert.equal(isKakaoTalk({ navigator: { userAgent: 'Mozilla/5.0 (Linux; Android 14) KAKAOTALK/10.0' } }), true);
+  assert.equal(isKakaoTalk({ navigator: { userAgent: 'Mozilla/5.0 (Linux; Android 14) Chrome/129' } }), false);
+  assert.equal(isKakaoTalk(undefined), false);
 });
 
 test('#75: 내려받기는 Blob 주소를 가진 <a download>를 눌러 연다. 브라우저가 아니면 false', () => {

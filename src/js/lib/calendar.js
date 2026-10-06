@@ -3,9 +3,11 @@
 // 알림 두 개: ① 당일 자정(시작 시각의 시·분만큼 전, 예: 18:00 약속 → 18시간 전) ② 권장 출발 1시간 전.
 // 파일 형식은 RFC 5545: 줄 끝은 CRLF, 75바이트를 넘는 줄은 다음 줄 앞에 공백 하나를 두고 이어 쓴다(folding),
 // 글자 값의 , ; \ 줄바꿈은 \ 로 피한다. 구글 캘린더 웹 링크는 보조(알림은 구글 기본 설정을 따른다).
+// 카카오톡 안 브라우저는 .ics 파일을 열지 못해('지원하지 않는 파일 형식', 10/6 대원 확인) 버튼이 약속 링크를
+// 기기의 기본 브라우저(크롬·사파리)로 여는 카카오톡 주소(kakaotalk://web/openExternal)로 바뀐다. 거기서 다시 누르면 된다.
 
 import { t } from './data.js';
-import { el } from './shell.js';
+import { el, isKakaoTalk } from './shell.js';
 
 export const DEPART_LEAD_MINUTES = 60; // 권장 출발 시각 몇 분 전에 알릴지
 export const EVENT_HOURS = 2;          // 일정 길이(끝 시각 = 도착 희망 시각 + 2시간)
@@ -114,6 +116,11 @@ export function downloadIcs(text, filename = ICS_FILENAME, { doc = globalThis.do
   }
 }
 
+/** 카카오톡 안 브라우저에서 주소를 기기의 기본 브라우저로 여는 카카오톡 주소 */
+export function externalBrowserUrl(url) {
+  return `kakaotalk://web/openExternal?url=${encodeURIComponent(url)}`;
+}
+
 /**
  * 약속 하나의 캘린더 일정(.ics 입력값과 구글 링크). 화면 문구는 copy.json(calendar.*).
  * @param {{arrival: Date|string, station: string, place?: string, url: string, departAt: Date, minutes: number, from?: string, app?: string}} meeting
@@ -140,17 +147,24 @@ export function meetingEvent({ arrival, station, place, url, departAt, minutes, 
 
 /**
  * 화면에 붙일 캘린더 등록 칸: [내 캘린더에 추가] 버튼 + 구글 캘린더 링크 + 안내.
+ * 카카오톡 안 브라우저면 버튼이 [브라우저에서 열어 캘린더에 추가](약속 링크를 크롬·사파리로 열기)가 된다.
  * @param {Parameters<typeof meetingEvent>[0]} meeting
+ * @param {{kakaoTalk?: boolean, win?: Window}} options 검사용
  * @returns {HTMLElement|null} 도착 시각이 이상하면 null(칸을 숨긴다)
  */
-export function calendarControls(meeting) {
+export function calendarControls(meeting, { win = globalThis.window, kakaoTalk = isKakaoTalk(win) } = {}) {
   if (Number.isNaN(new Date(meeting.arrival).getTime())) return null;
   const event = meetingEvent(meeting);
-  const hint = el('p', { className: 'cal-hint', textContent: t('calendar.hint') });
-  const button = el('button', {
-    type: 'button', className: 'btn ghost sm', textContent: t('calendar.add'),
-    onclick: () => { if (!downloadIcs(buildIcs(event))) hint.textContent = t('calendar.failed'); },
-  });
+  const hint = el('p', { className: 'cal-hint', textContent: t(kakaoTalk ? 'calendar.kakaoHint' : 'calendar.hint') });
+  const button = kakaoTalk
+    ? el('button', {
+      type: 'button', className: 'btn ghost sm', textContent: t('calendar.openExternal'),
+      onclick: () => { try { win.location.href = externalBrowserUrl(meeting.url); } catch { hint.textContent = t('calendar.failed'); } },
+    })
+    : el('button', {
+      type: 'button', className: 'btn ghost sm', textContent: t('calendar.add'),
+      onclick: () => { if (!downloadIcs(buildIcs(event))) hint.textContent = t('calendar.failed'); },
+    });
   const google = el('a', {
     className: 'cal-google', target: '_blank', rel: 'noopener', textContent: t('calendar.google'),
     href: googleCalendarUrl({ title: event.title, start: event.start, details: event.description, location: event.location }),
