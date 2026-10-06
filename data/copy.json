@@ -194,5 +194,16 @@
   "route.mapFrom": "출발",
   "route.mapTo": "도착",
   "route.mapTransfer": "{name} 환승",
-  "route.mapLabel": "{from}역에서 {to}역까지 경로"
+  "route.mapLabel": "{from}역에서 {to}역까지 경로",
+  "calendar.add": "내 캘린더에 추가",
+  "calendar.google": "구글 캘린더로 열기",
+  "calendar.hint": "캘린더 앱에서 '추가'를 누르면 당일 자정과 출발 1시간 전에 알림이 와요",
+  "calendar.failed": "캘린더 파일을 열지 못했어요. 위 구글 캘린더 링크로 넣어 주세요",
+  "calendar.title": "{app} · {station}역 {place}",
+  "calendar.titleNoPlace": "{app} · {station}역",
+  "calendar.location": "{station}역 {place}",
+  "calendar.description": "{from}역에서 {depart} 출발 · 약 {minutes}분 · 경로 보기 {url}",
+  "calendar.descriptionHost": "가장 오래 걸리는 사람 기준 {depart} 출발 · 약 {minutes}분 · 경로 보기 {url}",
+  "calendar.alarmDay": "오늘 {time} {station}역 약속이 있어요",
+  "calendar.alarmDepart": "1시간 뒤 출발 · {station}역 {time} 약속"
 }
