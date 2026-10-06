@@ -27,7 +27,9 @@ export function pickCandidates(purpose, participants, stationsById, candidatesBy
   return { candidates, midpoint };
 }
 
-/** 한 후보 역의 공평함 값. 참여자 이동시간의 평균·모집단 표준편차·최장, 점수 = 평균 + 표준편차. */
+export const STD_WEIGHT = 2; // 점수에서 표준편차(시간 차이)의 비중 (10/6 변경: 1 → 2, 공평함을 더 중시)
+
+/** 한 후보 역의 공평함 값. 참여자 이동시간의 평균·모집단 표준편차·최장, 점수 = 평균 + 2 × 표준편차. */
 function scoreStation(station, participantIds, times) {
   const travelTimes = Object.fromEntries(participantIds.map((pid) => [pid, times[pid][station.id]]));
   const minutes = participantIds.map((pid) => travelTimes[pid].minutes);
@@ -38,7 +40,7 @@ function scoreStation(station, participantIds, times) {
     travel_times: travelTimes,
     avg_time: avg,
     std_time: std,
-    score: avg + std,
+    score: avg + STD_WEIGHT * std,
     max_time: Math.max(...minutes),
     is_estimated: participantIds.some((pid) => travelTimes[pid].is_estimated),
   };
@@ -47,7 +49,7 @@ function scoreStation(station, participantIds, times) {
 const EPSILON = 1e-9; // 소수 계산 오차로 동률이 갈리지 않게
 
 /**
- * FUNC-007 공평한 역 순위 (10/3 밤 확정): score = 평균 + 표준편차 작은 순 → 최장 시간 짧은 순 → 역 id 순.
+ * FUNC-007 공평한 역 순위 (10/3 밤 확정, 10/6 표준편차 비중 2배): score = 평균 + 2 × 표준편차 작은 순 → 최장 시간 짧은 순 → 역 id 순.
  * 정렬 규칙은 이 함수 하나에만 둔다. 소수는 그대로 두고 화면에서 표시할 때만 반올림한다.
  * @param {Station[]} candidates
  * @param {Object<string, Object<string, {minutes, transfers, is_estimated}>>} times 참여자 id → 역 id → 시간 (transit.travelTimes)
