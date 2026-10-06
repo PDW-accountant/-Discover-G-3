@@ -287,11 +287,12 @@ input.p-name.invalid{border-color:#cf222e;}
 .acc-b{display:none;}
 .acc.open .acc-b{display:block;}
 .map{display:block;width:100%;height:auto;}
-/* 카카오 지도 (#16): SVG 약도 자리를 같은 크기로 바꾼다 */
-.kmap{width:100%;height:200px;background:#F9F6F1;}
-.kmap-label{padding:3px 8px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap;background:var(--card);border:1px solid var(--accent);color:var(--accent-ink);box-shadow:0 1px 3px rgba(0,0,0,.12);}
-.kmap-label.from{background:var(--accent);border-color:var(--accent);color:#fff;}
-.kmap-label.to{background:var(--ink);border-color:var(--ink);color:#fff;}
+/* 카카오 지도 (#16): SVG 약도 자리를 같은 크기로 바꾼다. #74: 구간별 노선 색 선 + 점·흰 이름표(테두리는 노선 색, map.js가 인라인으로 넣는다) */
+.kmap{width:100%;height:220px;background:#F9F6F1;}
+.kmap-dot{box-sizing:border-box;width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.3);}
+.kmap-dot.from,.kmap-dot.to{width:16px;height:16px;border-color:#fff;}
+.kmap-label{padding:3px 9px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap;background:#fff;border:2px solid var(--accent);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.18);}
+.kmap-label.transfer{font-size:11px;padding:2px 7px;color:#4a4845;}
 .map-link{display:block;padding:14px;text-align:center;font-weight:700;font-size:14px;color:var(--accent-ink);background:var(--accent-mist);}
 .route{padding:12px 14px;border-top:1px solid var(--hair);display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-weight:700;font-size:14px;}
 .map-box + .route{border-top:0;}
