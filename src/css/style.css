@@ -307,6 +307,13 @@ input.p-name.invalid{border-color:#cf222e;}
 .train{flex:none;border:1px solid var(--hair);border-radius:999px;padding:2px 7px;font-size:11px;font-weight:700;line-height:1.2;color:var(--muted);background:var(--card);}
 .train.express{border-color:transparent;color:var(--accent-ink);background:var(--accent-mist);}
 .depart{padding:10px 14px;border-top:1px solid var(--hair);font-size:14px;font-weight:700;color:var(--accent-ink);}
+/* 캘린더 등록 (#75): 개인 경로 화면 펼친 칸 맨 아래 */
+.cal-row{padding:10px 14px;border-top:1px solid var(--hair);display:flex;flex-direction:column;align-items:center;gap:6px;}
+.cal-row .btn.sm{width:100%;}
+.cal-google{font-size:12px;font-weight:700;color:var(--accent-ink);text-decoration:underline;}
+.cal-hint{font-size:12px;color:var(--muted);text-align:center;margin:0;}
+.cal-row.flash .btn{animation:cal-flash 1s ease-in-out 3;}
+@keyframes cal-flash{0%,100%{background:var(--card);}50%{background:var(--accent-mist);border-color:var(--accent);}}
 .depart.now{background:var(--accent-mist);}
 .route-place{padding:10px 14px;border-top:1px solid var(--hair);display:flex;align-items:center;gap:8px;font-size:14px;}
 .route-place .k{color:var(--muted);flex:none;}

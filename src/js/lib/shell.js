@@ -17,7 +17,8 @@ export function el(tag, props = {}, children = []) {
 
 const BACK_BUTTON = '.icon-btn.back'; // 화면 위쪽 [뒤로] 버튼
 const isBackButton = (event) => Boolean(event?.target?.closest?.(BACK_BUTTON));
-const isKakaoTalk = (win) => /KAKAOTALK/i.test(win?.navigator?.userAgent ?? '');
+/** 카카오톡 안 브라우저인지(UA). 종료 방식(shell)과 캘린더 파일 열기(calendar.js)가 같이 쓴다. */
+export const isKakaoTalk = (win) => /KAKAOTALK/i.test(win?.navigator?.userAgent ?? '');
 const LEAVE_STEP_MS = 400; // 뒤로 한 칸 간 뒤 이만큼 아무 일도 없으면 더 돌아갈 곳이 없는 것
 
 // ---------- 화면 이동 기록 (#44, 10/4 전체 설계: 화면_이동_설계.md) ----------

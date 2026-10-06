@@ -9,10 +9,12 @@
 // 본인을 찾아 자동으로 펼치고, 없으면 사용자가 목록에서 고른다.
 // 경로는 FUNC-006과 같은 그래프 계산(transit.travelTime)으로 다시 구한다. 서버 조회·캐시는 없다.
 // 그래프가 없거나 결과가 예상값이면 확정 때 저장된 분(people[].m)만 보여주고 '예상'을 강조한다.
+// 펼친 칸 맨 아래 '내 캘린더에 추가'(#75): 약속을 기기 캘린더에 넣고 알림(당일 자정·권장 출발 1시간 전)은 캘린더 앱이 울린다.
 
 import { loadData, t } from '../lib/data.js';
 import { travelTime } from '../lib/transit.js';
-import { departureAdvice } from '../lib/departure.js';
+import { BUFFER_MINUTES, departureAdvice } from '../lib/departure.js';
+import { calendarControls, calendarFlagOf } from '../lib/calendar.js';
 import { placeLink } from '../lib/places.js';
 import { drawRoute } from '../lib/map.js';
 import { rareServiceNotices } from '../lib/stations.js';
@@ -143,9 +145,16 @@ function placeNode(place, className = 'route-place top') {
   ]);
 }
 
-/** 펼친 칸의 내용: 지도 → 요약 → 구간 → 권장 출발 시각 (만남 장소는 화면 위쪽에만) */
-function routeBody(info) {
-  if (info.same_station) return [el('div', { className: 'route' }, [t('route.same')])];
+/** 캘린더 등록 칸(#75). 권장 출발 시각이 없으면(계산 실패) 도착 − 소요 − 여유 10분으로 잡는다. */
+function calendarRow(info, meeting) {
+  const arrival = new Date(meeting.arrival);
+  const departAt = info.departure?.depart_at ?? new Date(arrival.getTime() - (info.minutes + BUFFER_MINUTES) * 60000);
+  return calendarControls({ ...meeting, from: info.from.name, nickname: info.nickname, departAt, minutes: info.minutes });
+}
+
+/** 펼친 칸의 내용: 지도 → 요약 → 구간 → 권장 출발 시각 → 캘린더 등록 (만남 장소는 화면 위쪽에만) */
+function routeBody(info, meeting) {
+  if (info.same_station) return [el('div', { className: 'route' }, [t('route.same')]), calendarRow(info, meeting)].filter(Boolean);
 
   const mapBox = el('div', { className: 'map-box' });
   let drawn = false;
@@ -175,7 +184,7 @@ function routeBody(info) {
   }
 
   const notices = rareServiceNotices([info.from, info.to]).map((text) => el('p', { className: 'notice', textContent: text }));
-  return [mapBox, summary, ...notices, ...[steps, departRow].filter(Boolean)];
+  return [mapBox, summary, ...notices, ...[steps, departRow, calendarRow(info, meeting)].filter(Boolean)];
 }
 
 function showMessage(container, text) {
@@ -192,6 +201,10 @@ export async function render(container, params = {}) {
   const options = { stationsById, graph: data.transitGraph ?? null, places: data.places ?? [] };
   const toStation = resolveStation(confirmation.s, stationsById);
   const place = meetingPlace(confirmation, options.places, toStation.name);
+  // 캘린더 일정에 담을 약속 정보(#75). 링크는 공유 링크, 없으면 지금 주소
+  let pageUrl = '';
+  try { pageUrl = location.href; } catch { pageUrl = ''; }
+  const meeting = { arrival: confirmation.a, station: toStation.name, place: place?.name, url: confirmation.share_url ?? pageUrl };
 
   // 방 링크로 왔으면 이 기기의 참여자를 자동으로 펼친다. 명단에 없으면 안내 후 직접 고르게 한다.
   let deviceId = null;
@@ -199,8 +212,12 @@ export async function render(container, params = {}) {
   const mine = myNickname(params.room, deviceId);
   let openName = confirmation.people.some((p) => p.n === mine) ? mine : null;
   const notice = mine && !openName ? t('route.notInList') : '';
+  // 카카오톡에서 '브라우저에서 열어 캘린더에 추가'로 넘어왔으면(?cal=닉네임, #75) 그 사람 칸을 펼치고 캘린더 버튼을 바로 보여준다
+  const wanted = calendarFlagOf(pageUrl);
+  const showCalendar = wanted !== null;
+  if (showCalendar) openName = confirmation.people.find((p) => p.n === wanted)?.n ?? openName ?? confirmation.people[0].n;
 
-  const { screen, foot } = createShell(container);
+  const { screen, foot, toast } = createShell(container);
   const list = el('div', { className: 'routes' });
   screen.replaceChildren(
     el('div', { className: 'eyebrow', textContent: t('route.eyebrow') }),
@@ -232,10 +249,18 @@ export async function render(container, params = {}) {
       const info = open ? buildRouteInfo(confirmation, person.n, options) : null;
       return el('div', { className: open ? 'acc open' : 'acc' }, [
         head,
-        el('div', { className: 'acc-b' }, info ? routeBody(info) : []),
+        el('div', { className: 'acc-b' }, info ? routeBody(info, meeting) : []),
       ]);
     }));
   }
 
   draw();
+  if (showCalendar) {
+    const row = list.querySelector('.acc.open .cal-row');
+    if (row) {
+      row.classList.add('flash');
+      row.scrollIntoView?.({ block: 'center' });
+      toast(t('calendar.openedHint'));
+    }
+  }
 }
