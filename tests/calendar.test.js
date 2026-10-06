@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  DEPART_LEAD_MINUTES, EVENT_HOURS, buildIcs, departTrigger, downloadIcs, escapeText, externalBrowserUrl, foldLine, googleCalendarUrl, icsDate, meetingEvent, midnightTrigger,
+  BEFORE_MINUTES, EVENT_HOURS, beforeTrigger, buildIcs, downloadIcs, escapeText, externalBrowserUrl, foldLine, googleCalendarUrl, icsDate, meetingEvent, midnightTrigger,
 } from '../src/js/lib/calendar.js';
 import { isKakaoTalk } from '../src/js/lib/shell.js';
 
@@ -17,11 +17,10 @@ test('#75: 당일 자정 알림은 시작 시각의 시·분만큼 전 (18:00 �
   assert.equal(midnightTrigger(new Date(2026, 9, 6, 0, 45)), '-PT45M');
 });
 
-test('#75: 출발 알림은 권장 출발 시각 60분 전 (18:00 도착·17:26 출발 → 94분 전 = 1시간 34분)', () => {
-  assert.equal(departTrigger(arrival, departAt), '-PT1H34M');
-  assert.equal(departTrigger(arrival, arrival), '-PT1H'); // 만남 역에서 출발하면 약속 1시간 전
-  assert.equal(departTrigger(arrival, departAt, 0), '-PT34M');
-  assert.equal(DEPART_LEAD_MINUTES, 60);
+test('#75: 두 번째 알림은 약속 1시간 전 (10/6: 출발 시각 기준 알림은 뺌)', () => {
+  assert.equal(beforeTrigger(), '-PT1H');
+  assert.equal(beforeTrigger(90), '-PT1H30M');
+  assert.equal(BEFORE_MINUTES, 60);
 });
 
 test('#75: 시각은 UTC로 쓴다', () => {
@@ -79,12 +78,12 @@ test('#75: 구글 캘린더 링크는 제목·시각(UTC)·설명·장소를 담
   assert.equal(url.searchParams.get('location'), '장소');
 });
 
-test('#75: 약속 일정 — 참여자용은 출발역·출발 시각, 총무용은 가장 오래 걸리는 사람 기준, 알림은 자정·출발 1시간 전', () => {
+test('#75: 약속 일정 — 참여자용은 출발역·출발 시각, 총무용은 가장 오래 걸리는 사람 기준, 알림은 당일 자정·약속 1시간 전', () => {
   const mine = meetingEvent({ arrival, station: '종로3가', place: '시민식당 본점', url: 'https://x/?room=a', departAt, minutes: 24, from: '연신내', app: '어디Gㅏ3' });
   assert.equal(mine.title, 'calendar.title'); // 검사 환경에는 copy.json이 없어 키 이름이 보인다
   assert.equal(mine.start.getTime(), arrival.getTime());
   assert.equal(mine.url, 'https://x/?room=a');
-  assert.deepEqual(mine.alarms.map((a) => a.trigger), ['-PT18H', '-PT1H34M']);
+  assert.deepEqual(mine.alarms.map((a) => a.trigger), ['-PT18H', '-PT1H']);
   assert.match(mine.uid, /^\d+-%EC%97%B0%EC%8B%A0%EB%82%B4@eodiga3\.vercel\.app$/); // 한글은 피해 쓴다
   const host = meetingEvent({ arrival, station: '종로3가', url: 'https://x/?room=a', departAt, minutes: 24, app: '어디Gㅏ3' });
   assert.equal(host.title, 'calendar.titleNoPlace');

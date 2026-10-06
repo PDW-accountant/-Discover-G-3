@@ -1,6 +1,6 @@
 // 캘린더 등록(.ics) — 약속 리마인드 (#75, FUNC-026 제안). 10/6 결정: 앱 푸시·카톡 자동 발송 대신 기기 캘린더에 약속을 넣고
 // 알림은 캘린더 앱이 울린다. 서버·키·로그인 없이 브라우저에서 파일을 만든다.
-// 알림 두 개: ① 당일 자정(시작 시각의 시·분만큼 전, 예: 18:00 약속 → 18시간 전) ② 권장 출발 1시간 전.
+// 알림 두 개: ① 당일 자정(시작 시각의 시·분만큼 전, 예: 18:00 약속 → 18시간 전) ② 약속 1시간 전(10/6 대원: 출발 시각 기준 알림은 뺌).
 // 파일 형식은 RFC 5545: 줄 끝은 CRLF, 75바이트를 넘는 줄은 다음 줄 앞에 공백 하나를 두고 이어 쓴다(folding),
 // 글자 값의 , ; \ 줄바꿈은 \ 로 피한다. 구글 캘린더 웹 링크는 보조(알림은 구글 기본 설정을 따른다).
 // 카카오톡 안 브라우저는 .ics 파일을 열지 못해('지원하지 않는 파일 형식', 10/6 대원 확인) 버튼이 약속 링크를
@@ -9,7 +9,7 @@
 import { t } from './data.js';
 import { el, isKakaoTalk } from './shell.js';
 
-export const DEPART_LEAD_MINUTES = 60; // 권장 출발 시각 몇 분 전에 알릴지
+export const BEFORE_MINUTES = 60;      // 약속 몇 분 전에 알릴지
 export const EVENT_HOURS = 2;          // 일정 길이(끝 시각 = 도착 희망 시각 + 2시간)
 export const ICS_FILENAME = 'eodiga3-meeting.ics';
 const MINUTE_MS = 60 * 1000;
@@ -56,9 +56,9 @@ export function midnightTrigger(arrival) {
   return durationBefore(d.getHours() * 60 + d.getMinutes());
 }
 
-/** 권장 출발 lead분 전 알림: (도착 − 출발) + lead 분 전 */
-export function departTrigger(arrival, departAt, lead = DEPART_LEAD_MINUTES) {
-  return durationBefore((new Date(arrival).getTime() - new Date(departAt).getTime()) / MINUTE_MS + lead);
+/** 약속 minutes분 전 알림: '-PT1H' */
+export function beforeTrigger(minutes = BEFORE_MINUTES) {
+  return durationBefore(minutes);
 }
 
 /**
@@ -140,7 +140,7 @@ export function meetingEvent({ arrival, station, place, url, departAt, minutes, 
     title, start, location, description, url,
     alarms: [
       { trigger: midnightTrigger(start), text: t('calendar.alarmDay', { time, station }) },
-      { trigger: departTrigger(start, departAt), text: t('calendar.alarmDepart', { time, station }) },
+      { trigger: beforeTrigger(), text: t('calendar.alarmBefore', { time, station }) },
     ],
   };
 }
