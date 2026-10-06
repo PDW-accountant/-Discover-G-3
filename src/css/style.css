@@ -231,6 +231,7 @@ input.p-name.invalid{border-color:#cf222e;}
 .rec .rec-sum{position:relative;margin:14px 0 0;font-weight:700;font-size:15px;color:var(--accent-ink);}
 .rec .rec-meta{position:relative;margin:4px 0 0;font-size:13px;color:var(--muted);line-height:1.5;}
 .list{border:1px solid var(--hair);border-radius:20px;overflow:hidden;background:var(--card);}
+.list>.hint{margin:0;padding:14px 16px 16px;}
 .list-h{padding:16px 16px 12px;font-family:var(--serif);font-weight:700;font-size:18px;display:flex;justify-content:space-between;align-items:baseline;}
 .list-h small{font-family:var(--sans);font-size:12px;font-weight:500;color:var(--muted);}
 .place{padding:14px 16px;border-top:1px solid var(--hair);display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;}

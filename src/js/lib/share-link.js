@@ -1,11 +1,12 @@
 // 공유 링크 만들기·읽기 (개발 C) — FUNC-012, FUNC-014
 // 저장소(Redis)가 있으면 방 링크 …/?room={id}를 쓰고,
 // 없을 때만 확정 정보를 주소 # 뒤에 담는다 (…/#d=…). 키는 짧게, 역·장소는 id로.
-// MeetingConfirmation: { v:1, p:목적, a:도착시각, s:역id, pl:장소id, e:만료시각, people:[{n:닉네임, s:역id, m:분}], share_url }
+// MeetingConfirmation: { v:1, p:목적, a:도착시각, s:역id, pl?:장소id, e:만료시각, people:[{n:닉네임, s:역id, m:분}], share_url }
+//   pl 은 목적이 '기타'(장소 없이 역만 확정, #88)면 없다. 링크 버전은 그대로 1 — 예전 링크(pl 있음)도 그대로 열린다.
 //   share_url은 화면에서 붙이는 값이라 링크 문자열에는 넣지 않는다.
 // 링크에는 닉네임·출발역 id·분만 담는다. participant_id 등 다른 정보는 넣지 않는다 (FUNC-012 완료 조건).
 
-import { MAX_PARTICIPANTS, NICKNAME_MAX_LENGTH } from '../config.js';
+import { MAX_PARTICIPANTS, NICKNAME_MAX_LENGTH, PURPOSES } from '../config.js';
 
 export const CONFIRMATION_VERSION = 1;
 // ※ 공유 링크 만료 규칙은 미결(CLAUDE.md 10장). 정해지면 이 값만 바꾼다. 임시: 도착 희망 시각 + 30일.
@@ -16,7 +17,6 @@ export const ENFORCE_LINK_EXPIRY = false;
 // # 뒤 문자열 최대 길이. 넘으면 닉네임을 줄인다 (FUNC-012 예외).
 export const MAX_ENCODED_LENGTH = 1800;
 
-const PURPOSES = ['회식', '회의', '오락'];
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const isText = (value, max = 64) => typeof value === 'string' && value.length > 0 && value.length <= max;
@@ -51,7 +51,7 @@ export function createConfirmation(request, selectedResult, place, participants)
     p: request?.purpose,
     a: request?.arrival_time,
     s: selectedResult?.station?.id,
-    pl: place?.place_id,
+    ...(place?.place_id ? { pl: place.place_id } : {}), // 장소 없이 역만 확정하면(기타) pl 없음
     e: new Date(arrival.getTime() + LINK_EXPIRE_DAYS * DAY_MS).toISOString(),
     people,
   });
@@ -66,7 +66,8 @@ export function createConfirmation(request, selectedResult, place, participants)
 export function normalizeConfirmation(value) {
   if (!value || typeof value !== 'object') return null;
   const { v, p, a, s, pl, e, people } = value;
-  if (v !== CONFIRMATION_VERSION || !PURPOSES.includes(p) || !isDate(a) || !isText(s) || !isText(pl) || !isDate(e)) return null;
+  if (v !== CONFIRMATION_VERSION || !PURPOSES.includes(p) || !isDate(a) || !isText(s) || !isDate(e)) return null;
+  if (pl != null && !isText(pl)) return null; // 장소는 선택 항목(기타는 없음). 있으면 문자열이어야 한다
   if (!Array.isArray(people) || people.length === 0 || people.length > MAX_PARTICIPANTS) return null;
   const names = new Set();
   const cleanPeople = [];
@@ -77,7 +78,7 @@ export function normalizeConfirmation(value) {
     names.add(n);
     cleanPeople.push({ n, s: from, m });
   }
-  return { v, p, a, s, pl, e, people: cleanPeople };
+  return { v, p, a, s, ...(pl != null ? { pl } : {}), e, people: cleanPeople };
 }
 
 /** 만료 시각이 지났는지. FUNC-014 */

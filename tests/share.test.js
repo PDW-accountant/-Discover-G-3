@@ -122,3 +122,14 @@ test('FUNC-021 연계: 방 만들기 화면이 만든 ShareMessage(title, descri
   assert.equal(calls.send[0].content.link.webUrl, joinMessage.link);
   assert.equal(calls.send[0].buttons[0].link.webUrl, joinMessage.link);
 });
+
+test("#88: 장소 없이 역만 확정한 약속(기타)은 메시지 첫 줄이 '○○역'만", () => {
+  const { pl, ...stationOnly } = { ...confirmation, p: '기타' };
+  const message = buildShareMessage(stationOnly, { stationName: '종로3가' });
+  assert.equal(message.description, '종로3가역\n10월 8일 (목) 19시 00분');
+  assert.equal(message.title, '만남 장소와 경로가 확정되었어요');
+  assert.equal(message.link, confirmation.share_url);
+  assert.equal(buildShareMessage(stationOnly).description.split('\n')[0], 'S-SAMPLE-1역'); // 역 이름을 모르면 id
+  // 장소가 있으면 전과 같다
+  assert.equal(buildShareMessage(confirmation, names).description.split('\n')[0], '종로3가역 · 종로 고깃집');
+});

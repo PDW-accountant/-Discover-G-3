@@ -132,6 +132,10 @@ test('FUNC-016: 이름이 같아도 떨어진 역은 따로, 공식 역 이름�
 
 test('FUNC-016: 후보 역은 시트 초안대로 목적별 8곳 이상, 모두 그래프로 이어진 역', () => {
   assert.deepEqual([candidates.회식.length, candidates.회의.length, candidates.오락.length], [23, 16, 16]);
+  // '기타'(#88) = 세 목적 후보의 합집합(중복 없이, 역 id 순). 시트에 열을 더하지 않는다
+  const union = [...new Set([...candidates.회식, ...candidates.회의, ...candidates.오락])].sort();
+  assert.deepEqual(candidates.기타, union);
+  assert.equal(candidates.기타.length, 25);
   const inGraph = new Set(graph.edges.map((e) => e.from.split(':')[0]));
   assert.ok(Object.values(candidates).flat().every((id) => inGraph.has(id)));
 });

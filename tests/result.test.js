@@ -109,3 +109,37 @@ test('#53: 약속 시각은 HH:MM (만남 역 출발자는 이 시각 정각에 
   assert.equal(arrivalClock(new Date(2026, 9, 8, 9, 5)), '09:05');
   assert.equal(arrivalClock('잘못된 값'), '');
 });
+
+// ---------- #88 '기타': 장소 추천 없이 역만 ----------
+
+test("#88: 목적 '기타'는 세 목적 후보의 합집합에서 1위를 고르고, 장소는 빈 배열", () => {
+  const r = computeResult(data, { purpose: '기타' }, participants);
+  assert.equal(r.error, undefined);
+  const union = new Set([...data.candidates.회식, ...data.candidates.회의, ...data.candidates.오락]);
+  assert.ok(union.has(r.top.station.id));
+  assert.deepEqual(r.places, []); // 기타 장소 데이터는 없다 → 화면은 목록 대신 안내 한 줄
+  assert.equal(r.top.rank, 1);
+  for (const p of participants) assert.ok(Number.isInteger(r.top.travel_times[p.participant_id].minutes));
+  // 같은 출발역이면 기타 1위의 점수는 어느 단일 목적 1위보다 나쁘지 않다(후보가 더 많으므로)
+  const best = Math.min(...['회식', '회의', '오락'].map((purpose) => computeResult(data, { purpose }, participants).top.score));
+  assert.ok(r.top.score <= best + 1e-9);
+});
+
+test("#88: 기타 결과도 확정 정보로 만들 수 있다(장소 없이)", async () => {
+  const { createConfirmation } = await import('../src/js/lib/share-link.js');
+  const r = computeResult(data, { purpose: '기타' }, participants);
+  const c = createConfirmation({ purpose: '기타', arrival_time: new Date(2026, 9, 8, 19, 0).toISOString() }, r.top, null, participants);
+  assert.equal(c.p, '기타');
+  assert.equal(c.s, r.top.station.id);
+  assert.equal('pl' in c, false);
+  assert.deepEqual(c.people.map((p) => p.n), participants.map((p) => p.nickname));
+});
+
+test("#88: 기존 목적(회식·회의·오락)은 바뀐 것이 없다 — 장소 최대 3곳, 후보 수 그대로", () => {
+  for (const [purpose, count] of [['회식', 23], ['회의', 16], ['오락', 16]]) {
+    const r = computeResult(data, { purpose }, participants);
+    assert.equal(data.candidates[purpose].length, count, purpose);
+    assert.ok(r.places.length >= 1 && r.places.length <= 3, purpose);
+    assert.ok(r.places.every((p) => p.purpose === purpose && p.station_id === r.top.station.id), purpose);
+  }
+});

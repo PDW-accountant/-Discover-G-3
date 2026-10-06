@@ -647,6 +647,8 @@ function buildCandidates(categoryRows, bySlug, issues) {
     if (!s) { issues.push(`카테고리 탭의 역 id가 역 탭에 없음: ${r['역 id']}`); continue; }
     for (const [col, purpose] of Object.entries(PURPOSES)) if (/^o$/i.test(r[col] ?? '')) out[purpose].push(s.id);
   }
+  // '기타'(#88): 장소 추천 없이 역만 찾는 목적. 후보는 세 목적 후보의 합집합(중복 제거, 역 id 순) — 시트에 열을 더하지 않는다
+  out.기타 = [...new Set([...out.회식, ...out.회의, ...out.오락])].sort();
   for (const [purpose, ids] of Object.entries(out)) if (ids.length < MIN_CANDIDATES) issues.push(`목적별 후보 ${MIN_CANDIDATES}곳 미만: ${purpose} ${ids.length}곳`);
   return out;
 }

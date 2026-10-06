@@ -34,7 +34,7 @@ test('FUNC-021: 목적이나 도착 시간이 올바르지 않으면 400 invalid
     undefined,                                              // 본문 없음
     {},
     { ...valid, purpose: undefined },
-    { ...valid, purpose: '식사' },                           // 세 글자 값(회식·회의·오락)만 받는다
+    { ...valid, purpose: '식사' },                           // 정해진 값(회식·회의·오락·기타)만 받는다
     { ...valid, purpose: '회식 / 식사' },
     { ...valid, arrival_time: undefined },
     { ...valid, arrival_time: '' },
@@ -121,7 +121,7 @@ test('FUNC-021: 서버에는 host_token의 해시만 저장하고 원본은 보�
 });
 
 test('FUNC-021: 목적 세 가지(회식·회의·오락) 모두 방을 만들 수 있다', () => {
-  for (const purpose of ['회식', '회의', '오락']) {
+  for (const purpose of ['회식', '회의', '오락', '기타']) {
     const out = runWithRedisResults(['ok'], { body: { ...valid, purpose } });
     assert.equal(out.status, 200, purpose);
     assert.equal(out.commands[0][4], purpose);

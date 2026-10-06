@@ -31,7 +31,10 @@ export function formatMeetingTime(value) {
  * @returns {{title: string, description: string, link: string}} ShareMessage (이슈 #11 출력 형태 그대로)
  */
 export function buildShareMessage(confirmation, { stationName, placeName } = {}) {
-  const place = t('share.place', { station: stationName ?? confirmation.s, place: placeName ?? confirmation.pl });
+  const station = stationName ?? confirmation.s;
+  const placeLabel = placeName ?? confirmation.pl;
+  // 장소 없이 역만 확정한 약속(기타, #88)은 역 이름만
+  const place = placeLabel ? t('share.place', { station, place: placeLabel }) : t('share.placeStationOnly', { station });
   return {
     title: t('share.title'),
     description: t('share.description', { place, time: formatMeetingTime(confirmation.a) }),
