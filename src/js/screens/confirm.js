@@ -10,15 +10,17 @@
 //   ① 결과 화면(FUNC-009)에서 장소 '선택'을 눌렀을 때 (목적이 '기타'면 place: null — 장소 없이 역만 확정, #88)
 //      { request: MeetingRequest, selected_result: FairStationResult, place: Place|null,
 //        participants: Participant[], room_id?: 모임 방 id (각자 입력으로 진행했을 때) }
-//      → 확정 정보를 만들고, 방이 있으면 방에 저장 후 방 링크, 없거나 실패하면 #d= 링크를 붙인다.
+//      → 확정 정보를 만들고, 방이 있으면 방에 저장 후 방 링크. 방이 없으면(총무가 모두 입력) 새 방을 만들어 저장하고 방 링크(#101).
+//        서버를 못 쓰거나 저장에 실패하면 #d= 링크를 붙인다.
 //   ② 이미 만든 확정 정보로 다시 그릴 때 (공유 링크 열기 FUNC-014 등)
 //      { confirmation: MeetingConfirmation, room_id? }
 // 반환값: share_url이 붙은 MeetingConfirmation (실패하면 undefined)
 // '나의 경로 확인하기' → route.js render(container, { confirmation, room_id })
 
 import { loadData, t } from '../lib/data.js';
-import { confirmRoom, getRoom } from '../lib/api-client.js';
-import { addMeeting, clearDraft, getHostToken } from '../lib/storage.js';
+import { confirmRoom, createRoom, deleteRoom, getRoom } from '../lib/api-client.js';
+import { addMeeting, clearDraft, getHostToken, setHostToken } from '../lib/storage.js';
+import { saveConfirmationToNewRoom } from '../lib/share-room.js';
 import { createConfirmation, hashUrl, roomUrl } from '../lib/share-link.js';
 import { placeLink } from '../lib/places.js';
 import { buildShareMessage, canShareKakao, copyLink, formatMeetingTime, shareKakao } from '../lib/share.js';
@@ -82,8 +84,12 @@ function openRoute(container, params) {
   const fallback = () => showMessage(container, t('confirm.routeNotReady'));
   try {
     // 경로에서 뒤로 돌아오면(#44) 이미 만든 확정 정보({ confirmation, room_id })로 다시 그린다 — 방 저장을 되풀이하지 않는다
-    // 방 없이 확정했으면 주소를 공유 링크(#d=)로 바꿔 둔다 → 새로고침해도 경로 화면이 다시 열린다(방 링크 ?room= 은 이미 주소가 그렇다)
-    const url = params.confirmation?.share_url?.includes('#d=') ? params.confirmation.share_url : undefined;
+    // 주소를 공유 링크로 바꿔 둔다 → 새로고침해도 경로 화면이 다시 열린다. 방 모드의 총무 화면은 주소가 이미 그 방 링크라 그대로 둔다.
+    // 방 없이 입력했다가 확정할 때 새로 만든 방(#101)은 주소가 아직 첫 화면이라 방 링크로 바꾼다.
+    const shareUrl = params.confirmation?.share_url;
+    let here = '';
+    try { here = location.href; } catch { here = ''; }
+    const url = shareUrl && !here.startsWith(shareUrl) ? shareUrl : undefined;
     Promise.resolve(go(renderRoute, container, params, { back: params, url })).catch(fallback);
   } catch {
     fallback();
@@ -184,6 +190,7 @@ export async function render(container, params = {}) {
 
   // 저장소가 있으면 방에 저장하고 방 링크를 그대로 공유 링크로 쓴다. 없거나 실패하면 #d= 링크 (SFR-015, NFR-011).
   let notice = '';
+  let shareRoomId = roomId;
   const hostToken = roomId ? getHostToken(roomId) : null;
   if (roomId && hostToken) {
     if (await rosterChangedSince(roomId, hostToken, participants)) {
@@ -193,6 +200,14 @@ export async function render(container, params = {}) {
     const saved = await confirmRoom(roomId, confirmation, hostToken);
     if (saved.error) notice = t('confirm.roomSaveFailed');
     else confirmation = { ...confirmation, share_url: roomUrl(roomId) };
+  } else if (!roomId) {
+    // 방 없이(총무가 모두 입력) 확정해도 새 방에 저장해 짧은 방 링크로 공유한다(#101). 참여자 전원을 담는 #d= 링크는
+    // 7명부터 카카오톡 공유 메시지 크기 한도를 넘는다. 서버를 못 쓰면 null → 아래에서 지금처럼 #d= 링크
+    const newRoomId = await saveConfirmationToNewRoom(request, confirmation, { createRoom, confirmRoom, deleteRoom, setHostToken });
+    if (newRoomId) {
+      shareRoomId = newRoomId;
+      confirmation = { ...confirmation, share_url: roomUrl(newRoomId) };
+    }
   }
   if (!confirmation.share_url) confirmation = { ...confirmation, share_url: hashUrl(confirmation) };
 
@@ -204,7 +219,7 @@ export async function render(container, params = {}) {
   // 저장하는 동안 [뒤로]로 돌아갔으면(#44) 이전 화면을 덮어 그리지 않는다. 확정은 내 약속 목록에서 다시 열 수 있다
   if (!saving.screen.isConnected) return confirmation;
   drawSummary(container, confirmation, {
-    stations, places: [place, ...places].filter(Boolean), roomId: confirmation.share_url.includes('?room=') ? roomId : undefined, notice,
+    stations, places: [place, ...places].filter(Boolean), roomId: confirmation.share_url.includes('?room=') ? shareRoomId : undefined, notice,
   });
   return confirmation;
 }
