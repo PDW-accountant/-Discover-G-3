@@ -18,6 +18,7 @@ import { createRoom, deleteParticipant, getRoom, getStatus, saveParticipant } fr
 import { addRoomMeeting, clearDraft, getHostToken, saveDraftSoon, setHostToken } from '../lib/storage.js';
 import { roomUrl } from '../lib/share-link.js';
 import { copyLink } from '../lib/share.js';
+import { sameRoster } from '../lib/roster.js';
 import { MAX_PARTICIPANTS, MIN_PARTICIPANTS, NICKNAME_MAX_LENGTH, POLL_INTERVAL_MS, POLL_STOP_AFTER_MS } from '../config.js';
 import { render as renderResult } from './result.js';
 import { render as renderRoute } from './route.js';
@@ -543,12 +544,35 @@ export async function render(container, params = {}) {
     }
   }
 
-  /** 방 모드: 방의 참여자 목록으로 결과 화면(#7)을 연다. 아직 없으면 안내만 하고 계속 갱신한다. */
-  function find() {
+  /**
+   * 방 모드: 방의 참여자 목록으로 결과 화면(#7)을 연다. 아직 없으면 안내만 하고 계속 갱신한다.
+   * 누르기 직전에 방 명단을 한 번 더 읽는다(#96). 마지막 자동 확인 뒤(최대 5초, 자동 확인이 멈췄으면 그 뒤 전부) 누가 입력·수정했으면
+   * 옛 명단으로 계산하지 않고, 새 명단을 보여 준 뒤 다시 누르게 한다. 읽기에 실패하면 지금 명단으로 진행한다(확정할 때 한 번 더 확인).
+   */
+  async function find() {
+    stopPolling();
+    busy = true;
+    drawStatus();
+    let latest;
+    try {
+      latest = await getRoom(roomId, hostToken);
+    } catch {
+      latest = undefined;
+    }
+    busy = false;
+    if (!screen.isConnected) return;
+    if (latest === null) return poll(); // 방이 만료·삭제됨 → poll이 안내 화면으로 바꾼다
+    if (latest && (latest.status !== room.status || !sameRoster(latest.participants, remote()))) {
+      room = latest;
+      tracker = trackChange(null, remote());
+      idle = false;
+      message = confirmed() ? '' : t('participants.rosterChanged');
+      if (!confirmed()) startPolling();
+      return update();
+    }
     const participants = toParticipants(remote());
     const request = { purpose: room.purpose, arrival_time: room.arrival_time };
     const fallback = () => { toast(t('participants.findSoon')); if (!timer && !idle) startPolling(); };
-    stopPolling();
     try {
       Promise.resolve(go(renderResult, container, { ...params, request, participants, room_id: roomId }, { back: { ...params, room_id: roomId } })).catch(fallback);
     } catch {
