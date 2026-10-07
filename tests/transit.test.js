@@ -168,3 +168,17 @@ test('#16: 구간마다 열차가 서는 역 목록(via)을 돌려준다 — 급
   const local = trip('홍대입구', '잠실').steps[0].via;
   assert.ok(local.length > 10, `2호선 홍대입구→잠실은 서는 역이 많다 (${local.length})`);
 });
+
+test('#94: 9호선 급행으로 와서 신논현에서 신분당선으로 갈아타면 환승 한 번 = 도보 + 대기 3분 (급행→일반 갈아타기를 거치지 않는다)', () => {
+  for (const [from, to] of [['김포공항', '강남'], ['가양', '강남'], ['정자', '여의도']]) {
+    const r = trip(from, to);
+    assert.equal(r.transfers, 1, `${from} → ${to}`);
+    assert.equal(r.steps.length, 2, `${from} → ${to}`);
+    const change = r.steps[1].change;
+    assert.equal(change.type, 'transfer');
+    assert.equal(change.wait, WAIT_MINUTES, `${from} → ${to} 대기 ${change.wait}분`);
+    assert.ok(r.steps.some((s) => s.line === '9' && s.express), `${from} → ${to}는 9호선 급행을 탄다`);
+  }
+  // 10/7 전에는 46분(급행→일반 갈아타기 대기 3분이 더 붙음). 카카오맵 대중교통 약 40분대 초반
+  assert.ok(trip('김포공항', '강남').minutes <= 43, `${trip('김포공항', '강남').minutes}분`);
+});

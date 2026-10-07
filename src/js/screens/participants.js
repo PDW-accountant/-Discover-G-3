@@ -18,6 +18,7 @@ import { createRoom, deleteParticipant, getRoom, getStatus, saveParticipant } fr
 import { addRoomMeeting, clearDraft, getHostToken, saveDraftSoon, setHostToken } from '../lib/storage.js';
 import { roomUrl } from '../lib/share-link.js';
 import { copyLink } from '../lib/share.js';
+import { sameRoster } from '../lib/roster.js';
 import { MAX_PARTICIPANTS, MIN_PARTICIPANTS, NICKNAME_MAX_LENGTH, POLL_INTERVAL_MS, POLL_STOP_AFTER_MS } from '../config.js';
 import { render as renderResult } from './result.js';
 import { render as renderRoute } from './route.js';
@@ -317,6 +318,17 @@ export async function render(container, params = {}) {
     ]);
   }
 
+  /**
+   * 방 모드에서 아직 방에 저장하지 않은 줄(대신 입력하려고 추가한 줄)을 지운다(#95).
+   * 서버에는 없는 줄이라 화면 목록에서만 뺀다. 이 버튼이 없으면 실수로 늘린 빈 줄 때문에 '찾기'가 계속 꺼져 있었다.
+   */
+  function removeLocalRow(row) {
+    if (openRow === row) openRow = null;
+    rows.splice(rows.indexOf(row), 1);
+    message = '';
+    draw();
+  }
+
   /** 방 모드에서 총무가 대신 입력하는 줄: 역을 고르면 바로 방에 저장해 방 목록의 한 줄이 된다. */
   async function pickInRoom(row, stationId) {
     row.origin_station_id = stationId;
@@ -458,7 +470,16 @@ export async function render(container, params = {}) {
         placeholder: defaultName(offset + i + 1), ariaLabel: t('join.nicknamePlaceholder'), disabled: row.saving === true || inviting,
         oninput: () => { row.nickname = input.value; touched = true; drawStatus(); },
       });
-      return el('div', { className: isOpen ? 'person mine open' : 'person mine' }, [
+      // 방 모드의 줄은 아직 저장 전이라 언제든 지울 수 있다(#95). 로컬 모드는 아래 '−' 버튼으로 줄인다.
+      // '출발지'·'선택' 칸을 줄이지 않도록 줄 오른쪽 위 모서리에 작은 ×로 둔다(읽어 주는 이름은 'N번 삭제')
+      const removeButton = roomId ? [el('button', {
+        type: 'button', className: 'p-del', textContent: '×', title: t('participants.remove'),
+        ariaLabel: t('participants.removeName', { name: displayName(row, offset + i) }), disabled: row.saving === true || inviting,
+        onclick: () => removeLocalRow(row),
+      })] : [];
+      const rowClass = ['person mine', isOpen ? 'open' : '', roomId ? 'removable' : ''].filter(Boolean).join(' ');
+      return el('div', { className: rowClass }, [
+        ...removeButton,
         el('div', { className: 'p-row' }, [characterNode(offset + i, 'basic', 40), input, stationCell(row, isOpen)]),
         ...(isOpen ? [picker(row)] : []),
       ]);
@@ -525,12 +546,35 @@ export async function render(container, params = {}) {
     }
   }
 
-  /** 방 모드: 방의 참여자 목록으로 결과 화면(#7)을 연다. 아직 없으면 안내만 하고 계속 갱신한다. */
-  function find() {
+  /**
+   * 방 모드: 방의 참여자 목록으로 결과 화면(#7)을 연다. 아직 없으면 안내만 하고 계속 갱신한다.
+   * 누르기 직전에 방 명단을 한 번 더 읽는다(#96). 마지막 자동 확인 뒤(최대 5초, 자동 확인이 멈췄으면 그 뒤 전부) 누가 입력·수정했으면
+   * 옛 명단으로 계산하지 않고, 새 명단을 보여 준 뒤 다시 누르게 한다. 읽기에 실패하면 지금 명단으로 진행한다(확정할 때 한 번 더 확인).
+   */
+  async function find() {
+    stopPolling();
+    busy = true;
+    drawStatus();
+    let latest;
+    try {
+      latest = await getRoom(roomId, hostToken);
+    } catch {
+      latest = undefined;
+    }
+    busy = false;
+    if (!screen.isConnected) return;
+    if (latest === null) return poll(); // 방이 만료·삭제됨 → poll이 안내 화면으로 바꾼다
+    if (latest && (latest.status !== room.status || !sameRoster(latest.participants, remote()))) {
+      room = latest;
+      tracker = trackChange(null, remote());
+      idle = false;
+      message = confirmed() ? '' : t('participants.rosterChanged');
+      if (!confirmed()) startPolling();
+      return update();
+    }
     const participants = toParticipants(remote());
     const request = { purpose: room.purpose, arrival_time: room.arrival_time };
     const fallback = () => { toast(t('participants.findSoon')); if (!timer && !idle) startPolling(); };
-    stopPolling();
     try {
       Promise.resolve(go(renderResult, container, { ...params, request, participants, room_id: roomId }, { back: { ...params, room_id: roomId } })).catch(fallback);
     } catch {

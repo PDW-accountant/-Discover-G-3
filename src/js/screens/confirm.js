@@ -17,12 +17,13 @@
 // '나의 경로 확인하기' → route.js render(container, { confirmation, room_id })
 
 import { loadData, t } from '../lib/data.js';
-import { confirmRoom } from '../lib/api-client.js';
+import { confirmRoom, getRoom } from '../lib/api-client.js';
 import { addMeeting, clearDraft, getHostToken } from '../lib/storage.js';
 import { createConfirmation, hashUrl, roomUrl } from '../lib/share-link.js';
 import { placeLink } from '../lib/places.js';
 import { buildShareMessage, canShareKakao, copyLink, formatMeetingTime, shareKakao } from '../lib/share.js';
-import { createShell, el, go } from '../lib/shell.js';
+import { createShell, el, go, startAt } from '../lib/shell.js';
+import { sameRoster } from '../lib/roster.js';
 import { characterNode } from '../lib/characters.js';
 import { render as renderRoute } from './route.js';
 
@@ -47,6 +48,33 @@ function linkFor(place, stationName) {
 function showMessage(container, text, className = 'lead') {
   const props = className === 'error' ? { className, role: 'alert', textContent: text } : { className, textContent: text };
   createShell(container).screen.replaceChildren(el('p', props));
+}
+
+/**
+ * 결과를 계산한 뒤 방 명단이 바뀌었는지(#96). 총무가 결과·확정 화면에 있는 동안 참여자가 입력·수정하면 서버는 저장하지만
+ * 결과에는 빠져 있다. 그대로 확정하면 그 사람은 '저장 완료'를 보고도 명단에 없게 되므로 확정 전에 한 번 더 읽어 비교한다.
+ * 방을 못 읽으면(서버 장애·만료) 비교하지 않는다 — 확정 저장도 실패해 #d= 링크로 확정된다.
+ */
+async function rosterChangedSince(roomId, hostToken, participants) {
+  try {
+    const latest = await getRoom(roomId, hostToken);
+    return Boolean(latest && latest.status !== '확정' && !sameRoster(latest.participants, participants));
+  } catch {
+    return false;
+  }
+}
+
+/** 명단이 바뀌어 확정하지 않았다는 안내 + 총무의 출발지 화면(방 링크를 다시 연 것과 같은 화면)으로 가는 버튼 */
+function showRosterChanged(container, roomId) {
+  const { screen, foot } = createShell(container);
+  screen.replaceChildren(el('p', { className: 'error', role: 'alert', textContent: t('confirm.rosterChanged') }));
+  foot.replaceChildren(el('button', {
+    type: 'button', className: 'btn', textContent: t('confirm.backToRoster'),
+    onclick: async () => {
+      const { render: renderParticipants } = await import('./participants.js'); // participants → result → confirm 순환 import를 피한다
+      startAt(renderParticipants, container, { room_id: roomId }, { url: `?room=${encodeURIComponent(roomId)}` });
+    },
+  }));
 }
 
 /** 경로 화면을 연다. 아직 없거나 실패하면 안내 문구만 보여준다. */
@@ -158,6 +186,10 @@ export async function render(container, params = {}) {
   let notice = '';
   const hostToken = roomId ? getHostToken(roomId) : null;
   if (roomId && hostToken) {
+    if (await rosterChangedSince(roomId, hostToken, participants)) {
+      if (saving.screen.isConnected) showRosterChanged(container, roomId);
+      return undefined;
+    }
     const saved = await confirmRoom(roomId, confirmation, hostToken);
     if (saved.error) notice = t('confirm.roomSaveFailed');
     else confirmation = { ...confirmation, share_url: roomUrl(roomId) };

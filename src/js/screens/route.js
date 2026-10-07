@@ -19,7 +19,8 @@ import { placeLink } from '../lib/places.js';
 import { drawRoute } from '../lib/map.js';
 import { rareServiceNotices } from '../lib/stations.js';
 import { expressLinesOf, routeSummary, stepList, trainKind } from '../lib/route-steps.js';
-import { getParticipantId } from '../lib/storage.js';
+import { addReceivedMeeting, getParticipantId } from '../lib/storage.js';
+import { receivedMeetingUrl } from '../lib/share-link.js';
 import { createShell, el } from '../lib/shell.js';
 import { characterNode } from '../lib/characters.js';
 
@@ -231,6 +232,12 @@ function showMessage(container, text) {
 export async function render(container, params = {}) {
   const confirmation = params.confirmation ?? params.room?.confirmation;
   if (!confirmation?.people?.length) return showMessage(container, t('route.noConfirmation'));
+
+  // 링크로 받은 확정 약속을 이 브라우저의 '내 약속'에 남긴다(#97). 내가 만든 약속(같은 방·같은 링크)이면 그대로 둔다
+  try {
+    const roomId = params.room_id ?? params.room?.room_id ?? null;
+    addReceivedMeeting(confirmation, receivedMeetingUrl(confirmation, { roomId, origin: location.origin }));
+  } catch { /* 저장소가 막혔거나 링크를 다시 만들 수 없어도 경로 화면은 그대로 보여준다 */ }
 
   const data = await loadData().catch(() => ({}));
   const stationsById = Object.fromEntries((data.stations ?? []).map((s) => [s.id, s]));

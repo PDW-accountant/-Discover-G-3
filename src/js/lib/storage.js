@@ -75,8 +75,9 @@ export function hasDraftContent(draft) {
 }
 
 // ---------- FUNC-020 내 모임 목록 (#18) ----------
-// 이 휴대폰에서 만든 모임을 최근 순으로 최대 20건. 방을 만들 때 '입력중'으로 넣고, 확정하면 같은 방 항목을 '확정'으로 바꾼다.
-// MyMeeting: { key, status: '입력중'|'확정', room_id?, purpose, arrival_time, station_id?, place_id?, url, saved_at }
+// 이 브라우저의 약속을 최근 순으로 최대 20건. 방을 만들 때 '입력중'으로 넣고, 확정하면 같은 방 항목을 '확정'으로 바꾼다.
+// 링크로 받은 확정 약속도 개인 경로 화면을 열 때 '받은 약속'(received: true)으로 넣는다(#97).
+// MyMeeting: { key, status: '입력중'|'확정', received?, room_id?, purpose, arrival_time, station_id?, place_id?, url, saved_at }
 //   key: 방이 있으면 'room:{id}'(같은 방은 한 줄), 없으면 공유 링크(#d=…)
 const roomIdOfUrl = (url) => {
   try { return new URL(url, 'https://x.invalid').searchParams.get('room'); } catch { return null; }
@@ -103,6 +104,23 @@ export function addMeeting(confirmation, now = new Date()) {
     key: roomId ? `room:${roomId}` : confirmation.share_url, status: '확정', ...(roomId ? { room_id: roomId } : {}),
     purpose: confirmation.p, arrival_time: confirmation.a, station_id: confirmation.s, place_id: confirmation.pl,
     url: confirmation.share_url,
+  }, now);
+}
+
+/**
+ * 링크로 받은 확정 약속(#97): 개인 경로 화면이 열릴 때 이 브라우저의 목록에 '받은 약속'으로 넣는다.
+ * 같은 약속이 이미 있으면 — 내가 만든 약속(총무)이면 그대로 두고, 전에 받은 약속이면 최신 확정 내용으로 맨 위에 다시 넣는다.
+ * @param {MeetingConfirmation} confirmation @param {string} url share-link.js receivedMeetingUrl()로 만든 대표 주소
+ * @returns {boolean} 저장했으면 true
+ */
+export function addReceivedMeeting(confirmation, url, now = new Date()) {
+  const roomId = roomIdOfUrl(url);
+  const key = roomId ? `room:${roomId}` : url;
+  const existing = listMeetings().find((m) => m.key === key);
+  if (existing && !existing.received) return false;
+  return upsertMeeting({
+    key, status: '확정', received: true, ...(roomId ? { room_id: roomId } : {}),
+    purpose: confirmation.p, arrival_time: confirmation.a, station_id: confirmation.s, place_id: confirmation.pl, url,
   }, now);
 }
 
