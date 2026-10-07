@@ -267,6 +267,7 @@ JSON을 손으로 고치지 않는다. 콘텐츠팀 시트와 공공데이터가
 |---|---|---|
 | `room:{id}` (해시) | 모임 방: purpose, arrival_time, created_at, host_token_hash, status(입력중/확정), confirmation(확정 후: 역·장소·참여자별 시간), 참여자는 `p:{participant_id}` 필드 하나씩 `{nickname, station_id, updated_at}` | 30일 |
 
+- 총무가 출발지를 직접 다 입력해 방 없이 확정해도 확정할 때 방을 만들어 확정 정보를 저장하고 짧은 방 링크(?room=)로 공유한다(10/7 #101: 참여자 전원을 담는 #d= 링크는 7명부터 카카오톡 공유 메시지 크기 한도 초과). 서버를 못 쓰면 #d= 링크.
 - 방 id는 추측하기 어려운 무작위 10자 이상. host_token은 총무 브라우저에만 저장(localStorage `eodiga3:host:{room}`), 서버에는 해시만.
 - 참여자 식별은 브라우저가 만든 무작위 `participant_id`(localStorage `eodiga3:pid`). 로그인 없음. 같은 기기로 다시 들어오면 자기 입력 수정 가능.
 - 총무 화면의 현황 갱신은 5초 간격 폴링. 웹소켓·실시간 연결은 쓰지 않는다.
