@@ -93,7 +93,8 @@ export async function render(container, params = {}) {
     el('div', { className: 'eyebrow', textContent: t('join.eyebrow') }),
     el('h2', { className: 'q big', textContent: t('join.title') }),
     el('p', { className: 'lead', textContent: t('join.lead') }),
-    el('p', { className: 'meta', textContent: t('join.purpose', { purpose: room.purpose }) }),
+    // 저장값(회식·기타 등)이 아니라 다른 화면과 같은 목적 문구로 보여준다(#103: '모임 목적: 기타' → '역만 찾기')
+    el('p', { className: 'meta', textContent: t('join.purpose', { purpose: t(`meeting.purpose.${room.purpose}`) }) }),
     el('p', { className: 'meta', textContent: t('join.arrival', { time: formatArrival(room.arrival_time) }) }),
     el('p', { className: 'meta', textContent: t('join.count', { count: participants.length, max: MAX_PARTICIPANTS }) }),
   ];

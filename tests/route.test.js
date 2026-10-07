@@ -30,8 +30,10 @@ const graphRoute = {
   steps: [{ line: '2', from: 'S1', to: 'S2', minutes: 10 }, { line: '2', from: 'S2', to: 'S3', minutes: 5 }],
 };
 const advice = { depart_at: new Date('2026-10-05T09:32:00.000Z'), summary: '2호선', is_past: false };
+// 기준 시각: 약속(10/5 19:00) 전. 지정하지 않으면 테스트를 돌리는 날짜가 기준이 되어, 약속이 지난 뒤에는 출발 안내가 숨겨진다(#103)
+const BEFORE_MEETING = new Date('2026-10-01T00:00:00.000Z');
 const base = {
-  stationsById, places, travel: () => graphRoute, advise: () => advice, link: (p) => p.kakao_url,
+  stationsById, places, travel: () => graphRoute, advise: () => advice, link: (p) => p.kakao_url, now: BEFORE_MEETING,
 };
 
 test('FUNC-015: 그래프 계산 결과로 총 시간·환승·구간·출발 시각·만남 장소를 만든다', () => {
@@ -180,4 +182,30 @@ test('FUNC-015: 방 명단에서 이 기기의 닉네임을 찾는다 (pid, pid_
 test("FUNC-015: '카카오맵에서 보기'는 좌표가 있으면 길찾기, 없으면 검색", () => {
   assert.equal(kakaoMapLink(stationsById.S3), `https://map.kakao.com/link/to/${encodeURIComponent('강남역')},37.4979,127.0276`);
   assert.equal(kakaoMapLink({ name: '강남' }), `https://map.kakao.com/link/search/${encodeURIComponent('강남역')}`);
+});
+
+// ---------- #103 지난 약속 ----------
+
+test("#103: 약속 시각이 지난 뒤에 열면 출발 안내가 없다 (모든 칸에 '지금 출발하세요'가 뜨지 않게)", () => {
+  for (const now of [new Date('2026-10-05T10:00:00.000Z'), new Date('2026-10-05T10:01:00.000Z'), new Date('2026-10-20T03:00:00.000Z')]) {
+    for (const name of ['희원', '대원', '지원']) {
+      const info = buildRouteInfo(confirmation, name, { ...base, advise: undefined, travel: undefined, now });
+      assert.equal(info.departure, null, `${now.toISOString()} ${name}`);
+    }
+  }
+});
+
+test("#103: 약속 전이지만 권장 출발 시각이 지났으면 '지금 출발하세요'는 그대로 (약속 5분 전)", () => {
+  const now = new Date('2026-10-05T09:55:00.000Z'); // 약속 19:00(한국) 5분 전
+  const info = buildRouteInfo(confirmation, '희원', { stationsById, places, now });
+  assert.ok(info.departure);
+  assert.equal(info.departure.is_past, true);
+  assert.equal(departText(info).startsWith('지금 출발하세요'), true);
+});
+
+test('#103: 약속 전 넉넉한 시각이면 평소처럼 권장 출발 시각', () => {
+  const info = buildRouteInfo(confirmation, '희원', { stationsById, places, now: BEFORE_MEETING });
+  assert.ok(info.departure);
+  assert.equal(info.departure.is_past, false);
+  assert.match(departText(info), /^\d{2}:\d{2}쯤 출발하면 여유 있어요/);
 });
