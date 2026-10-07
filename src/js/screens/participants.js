@@ -299,7 +299,7 @@ export async function render(container, params = {}) {
   }
 
   // ---------- 그리기 ----------
-  function stationCell(row, isOpen, extra = []) {
+  function stationCell(row, isOpen) {
     const station = stationById(row.origin_station_id);
     return el('div', { className: 'p-st' }, [
       el('span', {
@@ -315,7 +315,6 @@ export async function render(container, params = {}) {
           if (openRow) body.querySelector('.picker input')?.focus();
         },
       }),
-      ...extra,
     ]);
   }
 
@@ -471,14 +470,17 @@ export async function render(container, params = {}) {
         placeholder: defaultName(offset + i + 1), ariaLabel: t('join.nicknamePlaceholder'), disabled: row.saving === true || inviting,
         oninput: () => { row.nickname = input.value; touched = true; drawStatus(); },
       });
-      // 방 모드의 줄은 아직 저장 전이라 언제든 지울 수 있다(#95). 로컬 모드는 아래 '−' 버튼으로 줄인다
+      // 방 모드의 줄은 아직 저장 전이라 언제든 지울 수 있다(#95). 로컬 모드는 아래 '−' 버튼으로 줄인다.
+      // '출발지'·'선택' 칸을 줄이지 않도록 줄 오른쪽 위 모서리에 작은 ×로 둔다(읽어 주는 이름은 'N번 삭제')
       const removeButton = roomId ? [el('button', {
-        type: 'button', className: 'pick', textContent: t('participants.remove'),
+        type: 'button', className: 'p-del', textContent: '×', title: t('participants.remove'),
         ariaLabel: t('participants.removeName', { name: displayName(row, offset + i) }), disabled: row.saving === true || inviting,
         onclick: () => removeLocalRow(row),
       })] : [];
-      return el('div', { className: isOpen ? 'person mine open' : 'person mine' }, [
-        el('div', { className: 'p-row' }, [characterNode(offset + i, 'basic', 40), input, stationCell(row, isOpen, removeButton)]),
+      const rowClass = ['person mine', isOpen ? 'open' : '', roomId ? 'removable' : ''].filter(Boolean).join(' ');
+      return el('div', { className: rowClass }, [
+        ...removeButton,
+        el('div', { className: 'p-row' }, [characterNode(offset + i, 'basic', 40), input, stationCell(row, isOpen)]),
         ...(isOpen ? [picker(row)] : []),
       ]);
     }));

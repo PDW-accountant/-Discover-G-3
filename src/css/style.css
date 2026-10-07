@@ -175,6 +175,11 @@ input.p-name{display:block;}
 .p-st .lbl{font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .p-st .lbl.empty{color:var(--muted);font-weight:500;}
 .p-st .pick{flex:none;border:0;background:var(--accent-mist);color:var(--accent-ink);border-radius:999px;font-weight:700;font-size:13px;padding:7px 11px;}
+/* 방 모드의 저장 전 줄 지우기(#95): 줄 오른쪽 위 모서리의 작은 × — '출발지'·'선택' 칸을 줄이지 않는다 */
+.person.removable{position:relative;}
+.person .p-del{position:absolute;top:-8px;right:-6px;z-index:1;width:26px;height:26px;padding:0;border:1px solid var(--hair);border-radius:50%;background:var(--card);color:var(--muted);font-size:16px;line-height:1;display:grid;place-items:center;cursor:pointer;}
+.person .p-del:hover{color:var(--accent-ink);border-color:var(--accent);}
+.person .p-del:disabled{opacity:.5;cursor:default;}
 .person.open .p-st{border-color:var(--accent);border-bottom-left-radius:0;border-bottom-right-radius:0;}
 .person.other .p-name,.person.other .p-st{color:var(--muted);}
 .person.other .p-name,.person.other .p-st .lbl{font-weight:500;}
