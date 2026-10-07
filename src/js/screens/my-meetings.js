@@ -6,7 +6,7 @@
 //     새로고침하면 그 약속이 다시 열린다. (예전에는 링크로 열어 앱이 처음부터 다시 시작돼 뒤로가기가 종료 안내로 바뀌었다)
 //   [삭제]: 한 번 더 눌러야 지운다. 입력 받는 중인 방은 서버의 방과 이 기기의 총무 토큰도 지운다(deleteRoom).
 //     서버가 없거나(Redis 없이 실행) 실패해도 목록에서는 지운다 — 서버의 방은 30일 뒤 만료. 확정된 방은 목록에서만 지운다.
-// '이 브라우저에만 저장돼요' 안내(카카오톡 안 브라우저와 크롬은 저장 공간이 따로, #97). 문구는 lib/data.js의 t()로 읽는다. 화면 모양은 프로토타입2의 목록(.list·.place·.mini)을 따른다.
+// 저장 위치·삭제 안내 문구는 10/7 뺐다(#99). 목록은 브라우저마다 따로라 카카오톡 안 브라우저와 크롬은 서로 보이지 않는다(#97). 문구는 lib/data.js의 t()로 읽는다. 화면 모양은 프로토타입2의 목록(.list·.place·.mini)을 따른다.
 
 import { loadData, t } from '../lib/data.js';
 import { deleteRoom } from '../lib/api-client.js';
@@ -100,11 +100,9 @@ export async function render(container) {
     screen.replaceChildren(
       el('div', { className: 'eyebrow', textContent: t('meetings.eyebrow') }),
       el('h2', { className: 'q big', textContent: t('meetings.title') }),
-      el('p', { className: 'lead', textContent: t('meetings.deviceOnly') }),
       meetings.length
         ? el('div', { className: 'list my-meetings' }, meetings.map(row))
         : el('p', { className: 'lead', textContent: t('meetings.empty') }),
-      ...(meetings.length ? [el('p', { className: 'hint', textContent: t('meetings.deleteHint') })] : []),
     );
     foot.replaceChildren();
   }
