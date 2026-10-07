@@ -591,6 +591,20 @@ function buildTransfers({ doorRows, csvRows, routes, rides, stationsById, issues
   }
   if (estimated.seoul.length) issues.warn(`서울 역 환승 ${estimated.seoul.length}건은 공식 자료가 없어 추정: ${estimated.seoul.join(', ')}`);
   if (estimated.other.length) issues.warn(`서울 밖 환승 ${estimated.other.length}건은 공식 자료가 없어 추정 (예: ${estimated.other.slice(0, 8).join(', ')}${estimated.other.length > 8 ? ' …' : ''})`);
+  // 급행 계통도 같은 역 일반 계통과 같은 환승값을 쓴다(같은 승강장에서 내린다). 위의 추정·가정 환승은 일반 계통에만 만들어지므로
+  // 급행이 서는 역이면 같은 값으로 급행 계통에도 만든다. 없으면 급행→일반 갈아타기(대기)를 한 번 더 거쳐 시간이 늘어난다
+  // (예: 신논현 9호선 급행↔신분당, #94). 공식값으로 이미 만든 간선은 put이 덮어쓰지 않는다.
+  const expressAt = (st, route) => (routesAt[st]?.has(`${route}-express`) ? `${route}-express` : null);
+  for (const e of [...edges.values()]) {
+    if (e.type !== 'transfer') continue;
+    const { from, to, minutes, type, ...extra } = e;
+    const [st, a] = from.split(':');
+    const b = to.split(':')[1];
+    const ea = expressAt(st, a), eb = expressAt(st, b);
+    if (ea) put(st, ea, b, minutes, extra);
+    if (eb) put(st, a, eb, minutes, extra);
+    if (ea && eb) put(st, ea, eb, minutes, extra);
+  }
   return [...edges.values()];
 }
 

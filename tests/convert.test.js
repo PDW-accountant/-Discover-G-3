@@ -193,3 +193,31 @@ test('FUNC-016: 변환을 두 번 실행해도 결과가 같다', () => {
   assert.equal(formatJson(again.graph), formatJson(graph));
   assert.equal(formatJson(again.stations), formatJson(stations));
 });
+
+// ---------- #94 급행 계통 환승 (10/7 최종 리뷰) ----------
+
+test('#94: 신논현은 9호선 급행에서 내려도 신분당선으로 바로 환승한다 (일반과 같은 도보 값, 양방향)', () => {
+  const local = edge(node('신논현', '9'), node('신논현', '신분당'));
+  assert.ok(local, '9호선 일반 ↔ 신분당 환승이 있어야 한다');
+  for (const [from, to] of [[node('신논현', '9-express'), node('신논현', '신분당')], [node('신논현', '신분당'), node('신논현', '9-express')]]) {
+    const e = edge(from, to);
+    assert.ok(e, `${from} → ${to} 환승 간선이 없다`);
+    assert.equal(e.type, 'transfer');
+    assert.equal(e.minutes, local.minutes);
+  }
+});
+
+test('#94: 급행이 서는 역이면 일반 계통의 모든 환승이 급행 계통에도 같은 값으로 있다 (추정·가정 환승 포함)', () => {
+  const nodes = new Set(graph.edges.flatMap((e) => [e.from, e.to]));
+  const missing = [];
+  for (const e of graph.edges.filter((x) => x.type === 'transfer')) {
+    const [st, a] = e.from.split(':');
+    const b = e.to.split(':')[1];
+    for (const [from, to] of [[`${st}:${a}-express`, e.to], [e.from, `${st}:${b}-express`]]) {
+      if (!nodes.has(from) || !nodes.has(to)) continue; // 급행이 서지 않는 역
+      const copy = edge(from, to);
+      if (!copy || copy.type !== 'transfer') missing.push(`${stations.find((s) => s.id === st)?.name ?? st} ${from.split(':')[1]}→${to.split(':')[1]}`);
+    }
+  }
+  assert.deepEqual(missing, []);
+});
