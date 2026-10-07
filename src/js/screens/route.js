@@ -104,6 +104,9 @@ export function buildRouteInfo(confirmation, nickname, {
   } catch {
     departure = null; // 권장 출발 시각(#22) 구현 전 → 그 줄을 숨긴다
   }
+  // 약속 시각이 이미 지났으면 출발 안내를 숨긴다(#103). 지난 링크·내 약속을 열면 모든 칸에 '지금 출발하세요'가 뜨던 문제.
+  // 약속 전이지만 권장 출발 시각이 지났을 때의 '지금 출발하세요'는 그대로 둔다.
+  if (departure && new Date(confirmation.a).getTime() <= new Date(now).getTime()) departure = null;
 
   return {
     nickname: person.n,
