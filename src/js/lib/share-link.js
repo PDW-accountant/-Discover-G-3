@@ -169,3 +169,13 @@ export function hashUrl(confirmation, origin = location.origin) {
 export function roomUrl(roomId, origin = location.origin) {
   return `${origin}/?room=${encodeURIComponent(roomId)}`;
 }
+
+/**
+ * 받은 약속을 '내 약속'에 남길 때 쓰는 대표 주소(#97). 방이면 방 링크, 아니면 확정 정보로 다시 만든 #d= 링크.
+ * 캘린더용 ?cal= 처럼 덧붙은 값이 있어도 같은 약속은 같은 주소가 되어, 총무가 만든 항목·이미 받은 항목과 한 줄로 묶인다.
+ */
+export function receivedMeetingUrl(confirmation, { roomId = null, origin = location.origin } = {}) {
+  if (roomId) return roomUrl(roomId, origin);
+  const { share_url: _shareUrl, ...rest } = confirmation;
+  return hashUrl(rest, origin);
+}

@@ -1,8 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  createConfirmation, normalizeConfirmation, encodeConfirmation, decodeConfirmation,
-  isExpired, hashUrl, roomUrl, readShareUrl, LINK_EXPIRE_DAYS, ENFORCE_LINK_EXPIRY,
+  createConfirmation, normalizeConfirmation, encodeConfirmation, decodeConfirmation, isExpired, hashUrl, roomUrl, readShareUrl, LINK_EXPIRE_DAYS, ENFORCE_LINK_EXPIRY, receivedMeetingUrl,
 } from '../src/js/lib/share-link.js';
 
 const NAMES = ['감자', '택이', '여섯글자닉네', '민아', '재호', '현우', '해진', '지훈', '연경'];
@@ -203,4 +202,26 @@ test("#88: '기타'는 허용되는 목적이고, 그 밖의 값은 여전히 �
     assert.equal(decodeConfirmation(Buffer.from(JSON.stringify({ ...c, p })).toString('base64url')), null, p);
   }
   assert.throws(() => createConfirmation({ ...request, purpose: 'etc' }, selected, null, participants));
+});
+
+// ---------- #97 받은 약속의 대표 주소 ----------
+
+test('#97: 방 링크면 방 번호로 만든 방 링크 (캘린더 ?cal= 같은 덧붙은 값 없이)', () => {
+  const c = createConfirmation(request, selected, place, participants);
+  assert.equal(receivedMeetingUrl({ ...c, share_url: `${SITE}/?room=room1234567&cal=감자` }, { roomId: 'room1234567', origin: SITE }), `${SITE}/?room=room1234567`);
+});
+
+test('#97: 방 없는 약속은 확정 정보로 다시 만든 #d= 링크 = 총무가 확정할 때 만든 공유 링크와 같다', () => {
+  const c = createConfirmation(request, selected, place, participants);
+  const hostUrl = hashUrl(c, SITE); // confirm.js가 총무의 '내 약속'에 넣는 주소
+  const opened = readShareUrl(new URL(`${SITE}/?cal=${encodeURIComponent('감자')}${hostUrl.slice(SITE.length + 1)}`)).confirmation; // 받은 사람이 ?cal= 붙은 주소로 열었다
+  assert.ok(opened.share_url.includes('cal='));
+  assert.equal(receivedMeetingUrl(opened, { origin: SITE }), hostUrl);
+});
+
+test("#97: '기타'(장소 없음) 약속도 같은 방식으로 대표 주소를 만든다", () => {
+  const c = createConfirmation({ ...request, purpose: '기타' }, selected, null, participants);
+  const url = receivedMeetingUrl({ ...c, share_url: 'https://다른주소/#d=xxx' }, { origin: SITE });
+  assert.equal(url, hashUrl(c, SITE));
+  assert.deepEqual(readShareUrl(url).confirmation.pl, undefined);
 });

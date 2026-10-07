@@ -1,11 +1,12 @@
 // 내 모임 목록 (개발 A) — FUNC-020 (#18)
-// 첫 화면 [내 약속 확인하기]로 연다. 이 휴대폰에서 만든 모임을 최근 순으로: '입력 받는 중'(방을 만든 뒤)과 '확정'.
+// 첫 화면 [내 약속 확인하기]로 연다. 이 브라우저의 약속을 최근 순으로: '입력 받는 중'(방을 만든 뒤)과 '확정'.
+//   링크로 받아 개인 경로를 연 확정 약속은 '받은 약속' 표시와 함께 들어온다(#97). 지우면 이 브라우저 목록에서만 지운다.
 //   [열기]: 입력 받는 중 → 총무 입력 현황(?room=, 총무 토큰이 없으면 참여자 입력) / 확정 → 개인 경로(#d= 공유 링크를 풀어서)
 //     화면 이동 기록(go)을 거쳐 열고 주소만 그 약속의 링크로 바꾼다(#44). 그래서 [뒤로]·휴대폰 뒤로가기는 이 목록으로 돌아오고,
 //     새로고침하면 그 약속이 다시 열린다. (예전에는 링크로 열어 앱이 처음부터 다시 시작돼 뒤로가기가 종료 안내로 바뀌었다)
 //   [삭제]: 한 번 더 눌러야 지운다. 입력 받는 중인 방은 서버의 방과 이 기기의 총무 토큰도 지운다(deleteRoom).
 //     서버가 없거나(Redis 없이 실행) 실패해도 목록에서는 지운다 — 서버의 방은 30일 뒤 만료. 확정된 방은 목록에서만 지운다.
-// '이 휴대폰에만 저장돼요' 안내. 문구는 lib/data.js의 t()로 읽는다. 화면 모양은 프로토타입2의 목록(.list·.place·.mini)을 따른다.
+// '이 브라우저에만 저장돼요' 안내(카카오톡 안 브라우저와 크롬은 저장 공간이 따로, #97). 문구는 lib/data.js의 t()로 읽는다. 화면 모양은 프로토타입2의 목록(.list·.place·.mini)을 따른다.
 
 import { loadData, t } from '../lib/data.js';
 import { deleteRoom } from '../lib/api-client.js';
@@ -71,6 +72,7 @@ export async function render(container) {
     return el('div', { className: 'place' }, [
       el('div', {}, [
         el('span', { className: confirmed ? 'train express' : 'train', textContent: t(confirmed ? 'meetings.confirmed' : 'meetings.collecting') }),
+        ...(meeting.received ? [el('span', { className: 'train', textContent: t('meetings.received') })] : []),
         el('b', { textContent: meetingTitle(meeting, { stationsById, placesById }) }),
         el('em', { textContent: [formatMeetingTime(meeting.arrival_time), confirmed ? t(`meeting.purpose.${meeting.purpose}`) : null].filter(Boolean).join(' · ') }),
       ]),

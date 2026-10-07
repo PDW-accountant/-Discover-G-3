@@ -193,3 +193,57 @@ test('FUNC-020: 저장소가 막히거나 값이 깨져도 빈 목록으로 오�
   assert.deepEqual(listMeetings(), []);
   removeMeeting('k');
 });
+
+// ---------- #97 링크로 받은 확정 약속 ----------
+
+test("#97: 링크로 받은 확정 약속은 '받은 약속'(received)으로 들어간다 — 방 링크는 방 번호로, #d= 링크는 주소로", async () => {
+  const { addReceivedMeeting, listMeetings } = await load();
+  assert.equal(addReceivedMeeting(confirmation(undefined), 'https://x/?room=room1234567', new Date(2026, 9, 7, 10)), true);
+  assert.equal(addReceivedMeeting(confirmation(undefined, { p: '기타', pl: undefined }), 'https://x/#d=abc', new Date(2026, 9, 7, 11)), true);
+  const list = listMeetings();
+  assert.deepEqual(list.map((m) => [m.key, m.status, m.received, m.room_id ?? null]), [
+    ['https://x/#d=abc', '확정', true, null],
+    ['room:room1234567', '확정', true, 'room1234567'],
+  ]);
+  assert.deepEqual({ purpose: list[1].purpose, station_id: list[1].station_id, place_id: list[1].place_id, url: list[1].url },
+    { purpose: '회식', station_id: 'S0153', place_id: 'P-1', url: 'https://x/?room=room1234567' });
+  assert.equal(list[0].place_id, undefined); // 기타는 장소 없음
+});
+
+test('#97: 내가 만든 약속(같은 방·같은 링크)이면 받은 약속으로 덮어쓰지 않는다 — 상태·순서 그대로', async () => {
+  const { addRoomMeeting, addMeeting, addReceivedMeeting, listMeetings } = await load();
+  addRoomMeeting({ room_id: 'room1234567', purpose: '회식', arrival_time: '2026-10-08T10:00:00.000Z', url: 'https://x/?room=room1234567' }, new Date(2026, 9, 7, 9));
+  addMeeting(confirmation('https://x/#d=mine'), new Date(2026, 9, 7, 10));
+  const before = JSON.stringify(listMeetings());
+  assert.equal(addReceivedMeeting(confirmation(undefined), 'https://x/?room=room1234567', new Date(2026, 9, 7, 11)), false);
+  assert.equal(addReceivedMeeting(confirmation(undefined), 'https://x/#d=mine', new Date(2026, 9, 7, 12)), false);
+  assert.equal(JSON.stringify(listMeetings()), before);
+  assert.ok(listMeetings().every((m) => !m.received));
+});
+
+test('#97: 같은 약속을 다시 열면 한 줄 — 최신 확정 내용으로 맨 위에 다시 들어간다', async () => {
+  const { addReceivedMeeting, addMeeting, listMeetings } = await load();
+  addReceivedMeeting(confirmation(undefined), 'https://x/?room=room1234567', new Date(2026, 9, 7, 10));
+  addMeeting(confirmation('https://x/#d=other'), new Date(2026, 9, 7, 11));
+  addReceivedMeeting(confirmation(undefined, { pl: 'P-2' }), 'https://x/?room=room1234567', new Date(2026, 9, 7, 12)); // 총무가 장소를 바꿔 다시 확정
+  const list = listMeetings();
+  assert.deepEqual(list.map((m) => m.key), ['room:room1234567', 'https://x/#d=other']);
+  assert.equal(list[0].place_id, 'P-2');
+});
+
+test('#97: 받은 약속도 20건 한도 안에서 오래된 것부터 지우고, 지우면 이 브라우저 목록에서만 빠진다', async () => {
+  const { addReceivedMeeting, listMeetings, removeMeeting, getHostToken } = await load();
+  for (let i = 0; i < 22; i++) addReceivedMeeting(confirmation(undefined), `https://x/#d=r${i}`, new Date(2026, 9, 7, 0, i));
+  assert.equal(listMeetings().length, 20);
+  assert.equal(listMeetings()[0].key, 'https://x/#d=r21');
+  addReceivedMeeting(confirmation(undefined), 'https://x/?room=room1234567');
+  removeMeeting('room:room1234567');
+  assert.ok(!listMeetings().some((m) => m.key === 'room:room1234567'));
+  assert.equal(getHostToken('room1234567'), null);
+});
+
+test('#97: 저장소가 막혀도 오류 없이 false', async () => {
+  const { addReceivedMeeting } = await load();
+  blocked = true;
+  assert.equal(addReceivedMeeting(confirmation(undefined), 'https://x/#d=abc'), false);
+});
