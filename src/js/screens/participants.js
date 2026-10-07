@@ -298,7 +298,7 @@ export async function render(container, params = {}) {
   }
 
   // ---------- 그리기 ----------
-  function stationCell(row, isOpen) {
+  function stationCell(row, isOpen, extra = []) {
     const station = stationById(row.origin_station_id);
     return el('div', { className: 'p-st' }, [
       el('span', {
@@ -314,7 +314,19 @@ export async function render(container, params = {}) {
           if (openRow) body.querySelector('.picker input')?.focus();
         },
       }),
+      ...extra,
     ]);
+  }
+
+  /**
+   * 방 모드에서 아직 방에 저장하지 않은 줄(대신 입력하려고 추가한 줄)을 지운다(#95).
+   * 서버에는 없는 줄이라 화면 목록에서만 뺀다. 이 버튼이 없으면 실수로 늘린 빈 줄 때문에 '찾기'가 계속 꺼져 있었다.
+   */
+  function removeLocalRow(row) {
+    if (openRow === row) openRow = null;
+    rows.splice(rows.indexOf(row), 1);
+    message = '';
+    draw();
   }
 
   /** 방 모드에서 총무가 대신 입력하는 줄: 역을 고르면 바로 방에 저장해 방 목록의 한 줄이 된다. */
@@ -458,8 +470,14 @@ export async function render(container, params = {}) {
         placeholder: defaultName(offset + i + 1), ariaLabel: t('join.nicknamePlaceholder'), disabled: row.saving === true || inviting,
         oninput: () => { row.nickname = input.value; touched = true; drawStatus(); },
       });
+      // 방 모드의 줄은 아직 저장 전이라 언제든 지울 수 있다(#95). 로컬 모드는 아래 '−' 버튼으로 줄인다
+      const removeButton = roomId ? [el('button', {
+        type: 'button', className: 'pick', textContent: t('participants.remove'),
+        ariaLabel: t('participants.removeName', { name: displayName(row, offset + i) }), disabled: row.saving === true || inviting,
+        onclick: () => removeLocalRow(row),
+      })] : [];
       return el('div', { className: isOpen ? 'person mine open' : 'person mine' }, [
-        el('div', { className: 'p-row' }, [characterNode(offset + i, 'basic', 40), input, stationCell(row, isOpen)]),
+        el('div', { className: 'p-row' }, [characterNode(offset + i, 'basic', 40), input, stationCell(row, isOpen, removeButton)]),
         ...(isOpen ? [picker(row)] : []),
       ]);
     }));
